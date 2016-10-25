@@ -29,4 +29,8 @@ public class BibTag {
 	public void setAFI(String AFI) {
 		this.AFI = AFI;
 	}
+	
+	public String toString() {
+		return "{ UID: " + this.UID + " MID: " + this.MID + " }";
+	}
 }

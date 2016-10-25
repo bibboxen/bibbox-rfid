@@ -18,7 +18,7 @@ This is also the class that can write to tags
 public class TagReader extends Thread {
 	private FedmIscReader fedm = null;
 	private boolean running = true;
-	private TagRead tagRead;
+	private TagListenerInterface tagRead;
 	private ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
 	private String event = "";
 	private String AFI = "07"; // standard that the book is in the house
@@ -26,8 +26,9 @@ public class TagReader extends Thread {
 	private String uidToWriteTo;
 	private LoggerImpl logger;
 	private String callbackMessage = "";
+	private ArrayList<BibTag> currentTags = new ArrayList<BibTag>();
 
-	public TagReader(TagRead tagRead, FedmIscReader fedm, LoggerImpl logger) {
+	public TagReader(TagListenerInterface tagRead, FedmIscReader fedm, LoggerImpl logger) {
 		this.fedm = fedm;
 		this.tagRead = tagRead;
 		this.logger = logger;
@@ -276,6 +277,7 @@ public class TagReader extends Thread {
 				fedm.sendProtocol((byte) 0x69); // RFReset
 				fedm.sendProtocol((byte) 0xB0); // ISOCmd
 
+				// @TODO - Review: Possibility of infinite loop?
 				while (fedm.getLastStatus() == 0x94) { // more flag set?
 					fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_MORE, 0x01);
 					fedm.sendProtocol((byte) 0xB0);
@@ -284,31 +286,29 @@ public class TagReader extends Thread {
 				serialNumber = new String[fedm.getTableLength(FedmIscReaderConst.ISO_TABLE)];
 				tagType = new String[fedm.getTableLength(FedmIscReaderConst.ISO_TABLE)];
 
-				if (serialNumber.length > 0)
-					;
 				bibTags.clear();
+								
+				// Register tags on device.
 				for (int i = 0; i < fedm.getTableLength(FedmIscReaderConst.ISO_TABLE); i++) {
 					serialNumber[i] = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE,
 							FedmIscReaderConst.DATA_SNR);
-					if (event.equals("tagDetected")) {
-						// For every tag on scanner > create a BibTag object
-						// with the UID and MID.
-						bibTags.add(new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i])));
-					} else if (event.equals("tagSet")) {
+				    if (event.equals("tagSet")) {
 						// set MID and AFI on all tags
 						BibTag b = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
 						writeMIDToMultipleBlocks(serialNumber[i]);
 						writeAFI(serialNumber[i], getAFI());
 						b.setAFI(getAFI());
 						bibTags.add(b);
-					} else if (event.equals("tagSetAFI")) {
+					} 
+					else if (event.equals("tagSetAFI")) {
 						// set AFI on all tags
 						BibTag b = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
 						writeAFI(serialNumber[i], getAFI());
 						b.setAFI(getAFI());
 						bibTags.add(b);
 
-					} else if (event.equals("tagSetAFIOnUID")) {
+					} 
+					else if (event.equals("tagSetAFIOnUID")) {
 						// set AFI on specific UID
 						String bookUID = serialNumber[i];
 						if (bookUID.equals(uidToWriteTo)) {
@@ -316,13 +316,18 @@ public class TagReader extends Thread {
 							writeAFI(serialNumber[i], getAFI());
 							b.setAFI(getAFI());
 							bibTags.add(b);
-						} else {
+						} 
+						else {
 							setCallbackMessage("UID: " + serialNumber[i] + ", could not be found on reader");
 						}
 					}
+					else {
+						// For every tag on scanner > create a BibTag object
+						// with the UID and MID.
+						bibTags.add(new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i])));
+					}
 
-					tagType[i] = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE,
-							FedmIscReaderConst.DATA_TRTYPE);
+					tagType[i] = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_TRTYPE);
 
 					if (tagType[i].equals("00"))
 						tagType[i] = "Philips I-Code1";
@@ -345,11 +350,48 @@ public class TagReader extends Thread {
 					if (tagType[i].equals("84"))
 						tagType[i] = "EPC Class1 Gen2 UHF";
 				}
+
+				// Compare current tags with tags detected.
+				// Emit events if changes.
+				for (int i = 0; i < bibTags.size(); i++) {
+					Boolean contains = false;
+					for (int j = 0; j < currentTags.size(); j++) {
+						if (bibTags.get(i).getMID().equals(currentTags.get(j).getMID()) && 
+							bibTags.get(i).getUID().equals(currentTags.get(j).getUID())) {
+							contains = true;
+							break;
+						}
+					}
+					if (!contains) {
+						tagRead.tagDetected(bibTags.get(i));
+					}
+				}
+				for (int i = 0; i < currentTags.size(); i++) {
+					Boolean contains = false;
+					for (int j = 0; j < bibTags.size(); j++) {
+						if (currentTags.get(i).getMID().equals(bibTags.get(j).getMID()) &&
+							currentTags.get(i).getUID().equals(bibTags.get(j).getUID())) {
+							contains = true;
+							break;
+						}
+					}
+					if (!contains) {
+						tagRead.tagRemoved(currentTags.get(i));
+					}
+				}
+				
+				// Updated current tags.
+				currentTags = new ArrayList<BibTag>(bibTags);
+
+				// Reset state to default = detecting tags.
 				event = "";
-				// call event to update list of bibtags.
-				tagRead.tagChanged();
+				
+				logger.log("--------------------------");
+
+				logger.log(currentTags.toString());
+				
 				try {
-					Thread.sleep(0);// how often the reader scans for tags
+					Thread.sleep(200); // how often the reader scans for tags
 				} catch (InterruptedException e) {
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}

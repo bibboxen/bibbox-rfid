@@ -15,7 +15,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-public class ClientImpl extends WebSocketClient implements TagRead, FeIscListener {
+public class ClientImpl extends WebSocketClient implements TagListenerInterface, FeIscListener {
 
 	private FedmIscReader fedm;
 	private String UID, MID, AFI;
@@ -118,7 +118,9 @@ public class ClientImpl extends WebSocketClient implements TagRead, FeIscListene
 	public void onOpen(ServerHandshake sh) {
 		// websocket client connected to websocket server
 		logger.log("************WebSocket connection opened************");
-		send("TEST");
+		JSONObject json = new JSONObject();
+		json.put("event", "client_connected");
+		send(json.toJSONString());
 	}
 
 	@Override
@@ -242,6 +244,7 @@ public class ClientImpl extends WebSocketClient implements TagRead, FeIscListene
 		for (BibTag b : bibTags) {
 			JSONObject json = new JSONObject();
 			json.put("UID", b.getUID());
+			json.put("event", "tagDetected");
 			json.put("MID", b.getMID());
 			send(json.toJSONString());
 		}
@@ -252,4 +255,21 @@ public class ClientImpl extends WebSocketClient implements TagRead, FeIscListene
 		logger.log("Error message: " + error);
 	}
 
+	@Override
+	public void tagDetected(BibTag bibTag) {
+		JSONObject json = new JSONObject();
+		json.put("event", "tagDetected");
+		json.put("UID", bibTag.getUID());
+		json.put("MID", bibTag.getMID());
+		send(json.toJSONString());
+	}
+
+	@Override
+	public void tagRemoved(BibTag bibTag) {
+		JSONObject json = new JSONObject();
+		json.put("event", "tagRemoved");
+		json.put("UID", bibTag.getUID());
+		json.put("MID", bibTag.getMID());
+		send(json.toJSONString());
+	}
 }

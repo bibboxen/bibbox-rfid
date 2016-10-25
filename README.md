@@ -16,7 +16,9 @@
 
 ## Running on Windows
 
-* Put native files in folder with rfid.jar and config.properties.
+* Put native files in the folder with rfid.jar and config.properties. 
+  Alternative is to put the path into the windows environment path. 
 * java -jar rfid.jar
 
 ## Running on Linux
+
