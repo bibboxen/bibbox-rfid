@@ -1,15 +1,20 @@
 package rfid;
 
-/*
-    An interface that describes the reader.
-*/
-
+/**
+ * TagListenerInterface.
+ */
 public interface TagListenerInterface {
-	public void tagChanged();
-
+	/**
+	 * A tag has been detected.
+	 * 
+	 * @param bibTag
+	 */
 	public void tagDetected(BibTag bibTag);
 
+	/**
+	 * A tag has been removed.
+	 * 
+	 * @param bibTag
+	 */
 	public void tagRemoved(BibTag bibTag);
-
-	public void lastError(String error);
 }

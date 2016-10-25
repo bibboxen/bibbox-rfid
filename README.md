@@ -17,8 +17,9 @@
 ## Running on Windows
 
 * Put native files in the folder with rfid.jar and config.properties. 
-  Alternative is to put the path into the windows environment path. 
+  Alternative is to put the path to the .dll files into the windows environment path. 
 * java -jar rfid.jar
 
 ## Running on Linux
 
+* Install the .so files. Use the install-libs.sh script.

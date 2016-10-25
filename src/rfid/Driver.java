@@ -6,17 +6,22 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import org.java_websocket.drafts.Draft_10;
 
+/**
+ * Driver.
+ * 
+ * This class contains the main method which initiates the client with the config properties.
+ */
 public class Driver {
-
-	/*
-	 * This class is the driver class. It contains the main method which
-	 * initiates the client with the config properties.
-	 */
 
 	private static String host;
 	private static int port;
 	private static LoggerImpl logger;
 
+	/**
+	 * Main entry point.
+	 * 
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		String filename = "LogFile.log";
 		File out = new File(System.getProperty("user.home"), filename);
@@ -39,6 +44,9 @@ public class Driver {
 
 	}
 
+	/**
+	 * Get configuration from properties file.
+	 */
 	public static void getConfigInformations() {
 		GetPropertiesImpl properties = new GetPropertiesImpl();
 

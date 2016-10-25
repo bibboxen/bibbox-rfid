@@ -15,32 +15,56 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+/**
+ * Client.
+ * 
+ * Handles communication with reader and websocket.
+ */
 public class ClientImpl extends WebSocketClient implements TagListenerInterface, FeIscListener {
-
 	private FedmIscReader fedm;
-	private String UID, MID, AFI;
 	private TagReader tagReader;
 	private ArrayList<BibTag> bibTags;
 	private LoggerImpl logger;
 
+	/**
+	 * Constructor.
+	 * 
+	 * @TODO: Move WebSocket implementation into separate class.
+	 * @TODO: Move Feig implementation into separate class.
+	 * 
+	 * @param serverUri
+	 * @param draft
+	 * @param logger
+	 */
 	public ClientImpl(URI serverUri, Draft draft, LoggerImpl logger) {
+		// Call constructor of WebSocketClient.
 		super(serverUri, draft);
 
 		this.logger = logger;
 
+		// Initialize Feig Reader.
 		if (!initiateFeigReader()) {
 			logger.log("************Cannot initate FEIG Reader************");
 		}
+		
+		// Open USBPort
 		if (openUSBPort()) {
 			logger.log("************USB CONNECTION ESTABLISHED************");
-		} else {
+		} 
+		else {
 			logger.log("************NO USB CONNECTION************");
 		}
 
+		// Start TagReader.
 		tagReader = new TagReader(this, fedm, logger);
 		tagReader.start();
 	}
 
+	/**
+	 * Initialize FeigReader
+	 * 
+	 * @return Boolean
+	 */
 	public boolean initiateFeigReader() {
 		// Initiate the reader object.
 		try {
@@ -67,6 +91,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		return false;
 	}
 
+	/**
+	 * Open USB port.
+	 * 
+	 * @return Boolean
+	 */
 	public boolean openUSBPort() {
 		// Close connection if any has already been established.
 		closeConnection();
@@ -94,6 +123,9 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		return false;
 	}
 
+	/**
+	 * Close connection to FeigReader.
+	 */
 	private void closeConnection() {
 		// close connection there is any
 		if (fedm.isConnected()) {
@@ -114,6 +146,9 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		}
 	}
 
+	/**
+	 * onOpen WebSocket.
+	 */
 	@Override
 	public void onOpen(ServerHandshake sh) {
 		// websocket client connected to websocket server
@@ -123,6 +158,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		send(json.toJSONString());
 	}
 
+	/**
+	 * onMessage WebSocket.
+	 * 
+	 * Handle events from socket.
+	 */
 	@Override
 	public void onMessage(String message) {
 		// This method is called whenever the websocket client receives a
@@ -150,7 +190,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 						tagReader.setMID(mid);
 						tagReader.setAFI(afi);
 						tagReader.setEvent("tagSet");
-						callback.put("callbacl", "true");
+						callback.put("callback", "true");
 						send(callback.toJSONString());
 					} else {
 						// System.out.println("You need to insert an AFI");
@@ -204,57 +244,60 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 		}
 	}
-
+	
+	/**
+	 * onClose WebSocket.
+	 * 
+	 * @TODO: Reconnect.
+	 */
 	@Override
 	public void onClose(int i, String string, boolean bln) {
 		// this method is called when connection to websocket server is closed.
 		logger.log("************WebSocket connection closed************");
 	}
 
+	/**
+	 * onError WebSocket.
+	 */
 	@Override
 	public void onError(Exception ex) {
 		logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 	}
 
+	/**
+	 * onSendProtocol FeigReader
+	 */
 	@Override
 	public void onSendProtocol(FedmIscReader reader, String string) {
 	}
 
+	/**
+	 * onReceiveProtocol FeigReader
+	 */
 	@Override
 	public void onReceiveProtocol(FedmIscReader reader, String string) {
 
 	}
 
+	/**
+	 * onSendProtocol FeigReader
+	 */
 	@Override
 	public void onSendProtocol(FedmIscReader reader, byte[] bytes) {
 	}
 
+	/**
+	 * onReceiveProtocol FeigReader
+	 */
 	@Override
 	public void onReceiveProtocol(FedmIscReader reader, byte[] bytes) {
 	}
 
-	@Override
-	public void tagChanged() {
-		// This is the method/event that is called
-		// everytime the tagReader thread loops through its run method.
-		// This method will constantly update the list of bibtags that currently
-		// is on the scanner.
-		bibTags = tagReader.getCurrentBibTagsOnScanner();
-
-		for (BibTag b : bibTags) {
-			JSONObject json = new JSONObject();
-			json.put("UID", b.getUID());
-			json.put("event", "tagDetected");
-			json.put("MID", b.getMID());
-			send(json.toJSONString());
-		}
-	}
-
-	@Override
-	public void lastError(String error) {
-		logger.log("Error message: " + error);
-	}
-
+	/**
+	 * Tag has been detected (TagListenerInterface).
+	 * 
+	 * Emit event to server.
+	 */
 	@Override
 	public void tagDetected(BibTag bibTag) {
 		JSONObject json = new JSONObject();
@@ -264,6 +307,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		send(json.toJSONString());
 	}
 
+	/**
+	 * Tag has been removed (TagListenerInterface).
+	 * 
+	 * Emit event to server.
+	 */
 	@Override
 	public void tagRemoved(BibTag bibTag) {
 		JSONObject json = new JSONObject();
