@@ -11,6 +11,8 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.handshake.ServerHandshake;
 import java.util.ArrayList;
+
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -46,17 +48,17 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		// Initialize Feig Reader.
 		if (!initiateFeigReader()) {
 			// @TODO: Emit error.
-			logger.log("************Cannot initate FEIG Reader************");
+			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
 		}
 		
 		// Open USBPort
 		if (openUSBPort()) {
 			// @TODO: Emit.
-			logger.log("************USB CONNECTION ESTABLISHED************");
+			logger.log("USB Connection: ESTABLISHED");
 		} 
 		else {
 			// @TODO: Emit error.
-			logger.log("************NO USB CONNECTION************");
+			logger.log("USB Connection: Error - NO USB CONNECTION");
 		}
 
 		// Start TagReader.
@@ -157,9 +159,9 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	@Override
 	public void onOpen(ServerHandshake sh) {
 		// websocket client connected to websocket server
-		logger.log("************WebSocket connection opened************");
+		logger.log("WebSocket: connection OPEN");
 		JSONObject json = new JSONObject();
-		json.put("event", "client_connected");
+		json.put("event", "connected");
 		send(json.toJSONString());
 		
 		connected = true;
@@ -174,14 +176,14 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	public void onMessage(String message) {
 		// This method is called whenever the websocket client receives a
 		// message.
-		logger.log("************WebSocket onMessage, message received: " + message + "************");
+		logger.log("WebSocket: message RECEIVED: " + message);
 		try {
 			JSONParser parser = new JSONParser();
 			JSONObject jsonMessage = (JSONObject) parser.parse(message);
 			JSONObject callback = new JSONObject();
 
-			if (jsonMessage.get("event").equals("tagDetected")) {
-				tagReader.setEvent("tagDetected");
+			if (jsonMessage.get("event").equals("detectTags")) {
+				tagReader.setState("detectTags");
 
 			} else if (jsonMessage.get("event").equals("tagSet")) {
 				// TODO
@@ -196,7 +198,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 						// there is an AFI in message
 						tagReader.setMID(mid);
 						tagReader.setAFI(afi);
-						tagReader.setEvent("tagSet");
+						tagReader.setState("tagSet");
 						callback.put("callback", "true");
 						send(callback.toJSONString());
 					} else {
@@ -220,14 +222,14 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 						if (!afi.equals("") && afi != null && afi != "") {
 							tagReader.setUidToWriteAfiTo(uid);
 							tagReader.setAFI(afi);
-							tagReader.setEvent("tagSetAFIOnUID");
+							tagReader.setState("tagSetAFIOnUID");
 							callback.put("callback", "true");
 							send(callback.toJSONString());
 						}
 					} else {
 						if (!afi.equals("") && afi != null && afi != "") {
 							tagReader.setAFI(afi);
-							tagReader.setEvent("tagSetAFI");
+							tagReader.setState("tagSetAFI");
 							callback.put("callback", "true");
 							send(callback.toJSONString());
 						} else {
@@ -260,7 +262,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	@Override
 	public void onClose(int i, String string, boolean bln) {
 		// this method is called when connection to websocket server is closed.
-		logger.log("************WebSocket connection closed************");
+		logger.log("WebSocket: connection CLOSED");
 		
 		connected = false;
 	}
@@ -310,10 +312,14 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	@Override
 	public void tagDetected(BibTag bibTag) {
 		if (connected) {
+			JSONObject tag = new JSONObject();
+			tag.put("UID", bibTag.getUID());
+			tag.put("MID", bibTag.getMID());
+		
 			JSONObject json = new JSONObject();
+			json.put("tag", tag);
 			json.put("event", "tagDetected");
-			json.put("UID", bibTag.getUID());
-			json.put("MID", bibTag.getMID());
+			
 			send(json.toJSONString());
 		}
 	}
@@ -326,11 +332,36 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	@Override
 	public void tagRemoved(BibTag bibTag) {
 		if (connected) {
+			JSONObject tag = new JSONObject();
+			tag.put("UID", bibTag.getUID());
+			tag.put("MID", bibTag.getMID());
+		
 			JSONObject json = new JSONObject();
+			json.put("tag", tag);
 			json.put("event", "tagRemoved");
-			json.put("UID", bibTag.getUID());
-			json.put("MID", bibTag.getMID());
+			
 			send(json.toJSONString());
+		}
+	}
+
+	@Override
+	public void tagsDetected(ArrayList<BibTag> bibTags) {
+		if (connected) {
+			JSONArray jsonArray = new JSONArray();
+			
+			// Add bibTags
+			for (BibTag bibTag : bibTags) {
+				JSONObject json = new JSONObject();
+				json.put("UID", bibTag.getUID());
+				json.put("MID", bibTag.getMID());
+				jsonArray.add(json);
+			}
+			
+			// Setup return object
+			JSONObject returnObj = new JSONObject();
+			returnObj.put("tags", jsonArray);
+			returnObj.put("event", "tagsDetected");
+			send(returnObj.toJSONString());
 		}
 	}
 }

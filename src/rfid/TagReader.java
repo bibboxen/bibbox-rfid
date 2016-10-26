@@ -20,7 +20,7 @@ public class TagReader extends Thread {
 	private boolean running = true;
 	private TagListenerInterface tagListener;
 	private ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
-	private String event = "";
+	private String state = "";
 	private String AFI = "07"; // standard that the book is in the house
 	private String MID;
 	private String uidToWriteTo;
@@ -34,8 +34,8 @@ public class TagReader extends Thread {
 		this.logger = logger;
 	}
 
-	public void setEvent(String event) {
-		this.event = event;
+	public void setState(String state) {
+		this.state = state;
 	}
 
 	public String getMID() {
@@ -292,7 +292,7 @@ public class TagReader extends Thread {
 				for (int i = 0; i < fedm.getTableLength(FedmIscReaderConst.ISO_TABLE); i++) {
 					serialNumber[i] = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE,
 							FedmIscReaderConst.DATA_SNR);
-				    if (event.equals("tagSet")) {
+				    if (state.equals("tagSet")) {
 						// set MID and AFI on all tags
 						BibTag b = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
 						writeMIDToMultipleBlocks(serialNumber[i]);
@@ -300,7 +300,7 @@ public class TagReader extends Thread {
 						b.setAFI(getAFI());
 						bibTags.add(b);
 					} 
-					else if (event.equals("tagSetAFI")) {
+					else if (state.equals("tagSetAFI")) {
 						// set AFI on all tags
 						BibTag b = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
 						writeAFI(serialNumber[i], getAFI());
@@ -308,7 +308,7 @@ public class TagReader extends Thread {
 						bibTags.add(b);
 
 					} 
-					else if (event.equals("tagSetAFIOnUID")) {
+					else if (state.equals("tagSetAFIOnUID")) {
 						// set AFI on specific UID
 						String bookUID = serialNumber[i];
 						if (bookUID.equals(uidToWriteTo)) {
@@ -383,8 +383,13 @@ public class TagReader extends Thread {
 				// Updated current tags.
 				currentTags = new ArrayList<BibTag>(bibTags);
 
+				// If requested current tags.
+				if (state.equals("detectTags")) {
+					tagListener.tagsDetected(currentTags);
+				}
+
 				// Reset state to default = detecting tags.
-				event = "";
+				state = "";
 				
 				logger.log("--------------------------");
 
