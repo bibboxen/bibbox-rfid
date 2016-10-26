@@ -1,6 +1,5 @@
 package rfid;
 
-import de.feig.FeHexConvert;
 import de.feig.FePortDriverException;
 import de.feig.FeReaderDriverException;
 import de.feig.FedmException;
@@ -9,12 +8,11 @@ import de.feig.FedmIscReaderConst;
 import de.feig.FedmIscReaderID;
 import java.util.ArrayList;
 
-/*
-This is the reader class.
-This class handles all the events: tagDetected, tagSet, tagSetAFI.
-This is also the class that can write to tags
+/**
+ * This is the reader class.
+ * This class handles the following states: detectTags, tagSet, tagSetAFI.
+ * This is also the class that can write to tags
 */
-
 public class TagReader extends Thread {
 	private FedmIscReader fedm = null;
 	private boolean running = true;

@@ -20,7 +20,9 @@ import org.json.simple.parser.ParseException;
 /**
  * Client.
  * 
- * Handles communication with Feig reader and WebSocket.
+ * Handles communication with FEIG reader and WebSocket.
+ * 
+ * @TODO: Replace org.json.simple.JSON* with GSON: https://github.com/google/gson to avoid type warnings.
  */
 public class ClientImpl extends WebSocketClient implements TagListenerInterface, FeIscListener {
 	private FedmIscReader fedm;
@@ -33,7 +35,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	 * Constructor.
 	 * 
 	 * @TODO: Move WebSocket implementation into separate class.
-	 * @TODO: Move Feig implementation into separate class.
+	 * @TODO: Move FEIG implementation into separate class.
 	 * 
 	 * @param serverUri
 	 * @param draft
@@ -45,7 +47,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 
 		this.logger = logger;
 
-		// Initialize Feig Reader.
+		// Initialize FEIG Reader.
 		if (!initiateFeigReader()) {
 			// @TODO: Emit error.
 			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
@@ -158,8 +160,10 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	 */
 	@Override
 	public void onOpen(ServerHandshake sh) {
-		// websocket client connected to websocket server
+		// WebSocket client connected to server
 		logger.log("WebSocket: connection OPEN");
+		
+		// Send connected to server.
 		JSONObject json = new JSONObject();
 		json.put("event", "connected");
 		send(json.toJSONString());
@@ -182,38 +186,37 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 			JSONObject jsonMessage = (JSONObject) parser.parse(message);
 			JSONObject callback = new JSONObject();
 
+			// detectTags Event
 			if (jsonMessage.get("event").equals("detectTags")) {
 				tagReader.setState("detectTags");
 
-			} else if (jsonMessage.get("event").equals("tagSet")) {
-				// TODO
-				// send success/failure + the uid of the success/failed tag if
-				// possible
+			} 
+			// setTag Event
+			else if (jsonMessage.get("event").equals("setTag")) {
 				String mid = jsonMessage.get("mid").toString();
 				String afi = jsonMessage.get("afi").toString();
 
-				if (mid != null && !mid.equals("") && mid != "") {
-					// there is an MID in message
-					if (afi != null && !afi.equals("") && afi != null) {
-						// there is an AFI in message
-						tagReader.setMID(mid);
-						tagReader.setAFI(afi);
-						tagReader.setState("tagSet");
-						callback.put("callback", "true");
-						send(callback.toJSONString());
-					} else {
-						// System.out.println("You need to insert an AFI");
-						callback.put("MID", mid);
-						callback.put("callback", "false");
-						send(callback.toJSONString());
-					}
-				} else {
-					// System.out.println("You need to insert an MID");
-					callback.put("callback", "false");
-					send(callback.toJSONString());
+				callback.put("event", "setTagResult");
+				
+				if (mid != null && !mid.equals("") && afi != null && !afi.equals("")) {
+					tagReader.setMID(mid);
+					tagReader.setAFI(afi);
+					tagReader.setState("tagSet");
+					callback.put("success", true);
 				}
-
-			} else if (jsonMessage.get("event").equals("tagSetAFI")) {
+				else {
+					callback.put("MID", mid);
+					callback.put("AFI", afi);
+					callback.put("success", false);
+					callback.put("message", "You need to insert a MID and an AFI");
+				}
+				
+				send(callback.toJSONString());
+			} 
+			// setAFI Event
+			else if (jsonMessage.get("event").equals("setAFI")) {
+				callback.put("event", "setAFIResult");
+				
 				try {
 					String afi = jsonMessage.get("afi").toString();
 					String uid = jsonMessage.get("uid").toString();
@@ -223,30 +226,28 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 							tagReader.setUidToWriteAfiTo(uid);
 							tagReader.setAFI(afi);
 							tagReader.setState("tagSetAFIOnUID");
-							callback.put("callback", "true");
-							send(callback.toJSONString());
+							callback.put("success", true);
 						}
 					} else {
 						if (!afi.equals("") && afi != null && afi != "") {
 							tagReader.setAFI(afi);
 							tagReader.setState("tagSetAFI");
-							callback.put("callback", "true");
-							send(callback.toJSONString());
+							callback.put("success", true);
 						} else {
-							callback.put("callback", "false");
-							send(callback.toJSONString());
+							callback.put("success", false);
 						}
 					}
 				} catch (NullPointerException e) {
-					callback.put("callback", "false");
-					send(callback.toJSONString());
+					callback.put("success", false);
 					e.printStackTrace();
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				} catch (Exception e) {
-					callback.put("callback", "false");
+					callback.put("success", false);
 					e.printStackTrace();
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}
+
+				send(callback.toJSONString());
 			}
 		} catch (ParseException ex) {
 			ex.printStackTrace();

@@ -9,10 +9,9 @@ import org.java_websocket.drafts.Draft_10;
 /**
  * Driver.
  * 
- * This class contains the main method which initiates the client with the config properties.
+ * This class contains the main method which initiates the client with config.properties.
  */
 public class Driver {
-
 	private static String host;
 	private static int port;
 	private static LoggerImpl logger;
@@ -23,17 +22,19 @@ public class Driver {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		// Read config.properties.
+		readConfiguration();
+
+		// @TODO: Read from config.properties.
 		String filename = "LogFile.log";
 		File out = new File(System.getProperty("user.home"), filename);
-
 		logger = new LoggerImpl(out.getAbsolutePath());
-
-		getConfigInformations();
 
 		if (host == null || host.equals("") || host == "") {
 			host = "localhost";
 		}
 
+		// Start client.
 		ClientImpl client;
 		try {
 			client = new ClientImpl(new URI("ws://" + host + ":" + port), new Draft_10(), logger);
@@ -41,13 +42,12 @@ public class Driver {
 		} catch (URISyntaxException ex) {
 			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 		}
-
 	}
 
 	/**
-	 * Get configuration from properties file.
+	 * Read configuration from properties file.
 	 */
-	public static void getConfigInformations() {
+	public static void readConfiguration() {
 		GetPropertiesImpl properties = new GetPropertiesImpl();
 
 		try {
