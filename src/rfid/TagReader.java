@@ -18,7 +18,7 @@ This is also the class that can write to tags
 public class TagReader extends Thread {
 	private FedmIscReader fedm = null;
 	private boolean running = true;
-	private TagListenerInterface tagRead;
+	private TagListenerInterface tagListener;
 	private ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
 	private String event = "";
 	private String AFI = "07"; // standard that the book is in the house
@@ -28,9 +28,9 @@ public class TagReader extends Thread {
 	private String callbackMessage = "";
 	private ArrayList<BibTag> currentTags = new ArrayList<BibTag>();
 
-	public TagReader(TagListenerInterface tagRead, FedmIscReader fedm, LoggerImpl logger) {
+	public TagReader(TagListenerInterface tagListener, FedmIscReader fedm, LoggerImpl logger) {
 		this.fedm = fedm;
-		this.tagRead = tagRead;
+		this.tagListener = tagListener;
 		this.logger = logger;
 	}
 
@@ -363,7 +363,7 @@ public class TagReader extends Thread {
 						}
 					}
 					if (!contains) {
-						tagRead.tagDetected(bibTags.get(i));
+						tagListener.tagDetected(bibTags.get(i));
 					}
 				}
 				for (int i = 0; i < currentTags.size(); i++) {
@@ -376,7 +376,7 @@ public class TagReader extends Thread {
 						}
 					}
 					if (!contains) {
-						tagRead.tagRemoved(currentTags.get(i));
+						tagListener.tagRemoved(currentTags.get(i));
 					}
 				}
 				
