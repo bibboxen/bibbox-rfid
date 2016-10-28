@@ -46,26 +46,32 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		super(serverUri, draft);
 
 		this.logger = logger;
-
+                
+                
 		// Initialize FEIG Reader.
 		if (!initiateFeigReader()) {
 			// @TODO: Emit error.
 			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
-		}
+                        tagReader.setRunning(false);
+		} else {
+                    // Open USBPort
+                    if (openUSBPort()) {
+                            // @TODO: Emit.
+                            logger.log("USB Connection: ESTABLISHED");
+                            
+                            // Start TagReader.
+                            tagReader = new TagReader(this, fedm, logger);
+                            tagReader.setRunning(true);
+                            tagReader.start();
+                    } 
+                    else {
+                            // @TODO: Emit error.
+                            tagReader.setRunning(false);
+                            logger.log("USB Connection: Error - NO USB CONNECTION");
+                    }
+                }
 		
-		// Open USBPort
-		if (openUSBPort()) {
-			// @TODO: Emit.
-			logger.log("USB Connection: ESTABLISHED");
-		} 
-		else {
-			// @TODO: Emit error.
-			logger.log("USB Connection: Error - NO USB CONNECTION");
-		}
-
-		// Start TagReader.
-		tagReader = new TagReader(this, fedm, logger);
-		tagReader.start();
+		
 	}
 
 	/**
@@ -89,7 +95,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		// Set the table size of the reader.
 		// As of now it has been set to 50
 		// which means the reader can read an inventory of max 50.
-		// This can be set to for instance 100.
+		// The reader will therefore work best when 50 tags on reader.
 		try {
 			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 50);
 			return true;
@@ -121,13 +127,16 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 			return true;
 		} catch (FedmException ex) {
 			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
-			ex.printStackTrace();
+                        tagReader.setRunning(false);
+                        System.out.println("FEIGReader not connected to usb");
 		} catch (FePortDriverException ex) {
 			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			ex.printStackTrace();
+			tagReader.setRunning(false);
+                        System.out.println("FEIGReader not connected to usb: FePortDriverException");
 		} catch (FeReaderDriverException ex) {
 			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			ex.printStackTrace();
+			tagReader.setRunning(false);
+                        System.out.println("FEIGReader not connected to usb: FeReaderDriverException");
 		}
 		return false;
 	}
@@ -138,20 +147,20 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	private void closeConnection() {
 		// close connection there is any
 		if (fedm.isConnected()) {
-			try {
-				fedm.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
-				fedm.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
-				fedm.disConnect();
-			} catch (FedmException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
-			} catch (FePortDriverException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			} catch (FeReaderDriverException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			}
+                    try {
+                            fedm.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
+                            fedm.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
+                            fedm.disConnect();
+                    } catch (FedmException ex) {
+                            ex.printStackTrace();
+                            logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
+                    } catch (FePortDriverException ex) {
+                            ex.printStackTrace();
+                            logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
+                    } catch (FeReaderDriverException ex) {
+                            ex.printStackTrace();
+                            logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
+                    }
 		}
 	}
 
@@ -266,6 +275,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		logger.log("WebSocket: connection CLOSED");
 		
 		connected = false;
+                tagReader.setRunning(false);
 	}
 
 	/**
@@ -274,6 +284,8 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	@Override
 	public void onError(Exception ex) {
 		logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+                connected = false;
+                tagReader.setRunning(false);
 	}
 
 	/**
@@ -365,4 +377,8 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 			send(returnObj.toJSONString());
 		}
 	}
+        
+        public boolean isConnected(){
+            return this.connected;
+        }
 }

@@ -51,11 +51,17 @@ public class TagReader extends Thread {
 		String b2 = readSpecificBlock(id, (byte) 2);
 		String b3 = readSpecificBlock(id, (byte) 3);
 		mid = b0 + b1 + b2 + b3;
-		String midSub = mid.substring(6, 26);
-		String midReplaced = midSub.replaceAll(".(.)?", "$1");
-		String s = mid.substring(0, 6) + midReplaced;
-
-		return s;
+                try{
+                    String midSub = mid.substring(6, 26);
+                    String midReplaced = midSub.replaceAll(".(.)?", "$1");
+                    String s = mid.substring(0, 6) + midReplaced;
+                    return s;
+                } catch(Exception ex){
+                    ex.printStackTrace();
+                    logger.log("Could not create MID");
+                }
+	
+		return "";
 	}
 
 	public String readSpecificBlock(String id, byte dbAddress) {
@@ -257,6 +263,14 @@ public class TagReader extends Thread {
 	public String getCallbackMessage() {
 		return this.callbackMessage;
 	}
+        
+        public void setRunning(boolean running){
+            this.running = running;
+        }
+        
+        public boolean getRunning(){
+            return this.running;
+        }
 
 	public void run() {
 		while (running) {
