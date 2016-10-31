@@ -410,7 +410,7 @@ public class TagReader extends Thread {
 				// logger.log(currentTags.toString());
 				
 				try {
-					Thread.sleep(200); // how often the reader scans for tags, every 200 ms.
+					Thread.sleep(0); // how often the reader scans for tags, every 0 ms. Instant loop.
 				} catch (InterruptedException e) {
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}
