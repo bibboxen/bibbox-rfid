@@ -51,15 +51,17 @@ public class TagReader extends Thread {
 		String b2 = readSpecificBlock(id, (byte) 2);
 		String b3 = readSpecificBlock(id, (byte) 3);
 		mid = b0 + b1 + b2 + b3;
-                try{
-                    String midSub = mid.substring(6, 26);
-                    String midReplaced = midSub.replaceAll(".(.)?", "$1");
-                    String s = mid.substring(0, 6) + midReplaced;
-                    return s;
-                } catch(Exception ex){
-                    ex.printStackTrace();
-                    logger.log("Could not create MID");
-                }
+
+		try{
+            String midSub = mid.substring(6, 26);
+            String midReplaced = midSub.replaceAll(".(.)?", "$1");
+            String s = mid.substring(0, 6) + midReplaced;
+            return s;
+        } catch(Exception ex){
+        	// Ignore.
+            ex.printStackTrace();
+            logger.log("Could not create MID");
+        }
 	
 		return "";
 	}
