@@ -403,12 +403,12 @@ public class TagReader extends Thread {
 				// Reset state to default = detecting tags.
 				state = "";
 				
-				logger.log("--------------------------");
-
-				logger.log(currentTags.toString());
+				// DEBUG
+				// logger.log("--------------------------");
+				// logger.log(currentTags.toString());
 				
 				try {
-					Thread.sleep(200); // how often the reader scans for tags
+					Thread.sleep(200); // how often the reader scans for tags, every 200 ms.
 				} catch (InterruptedException e) {
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}

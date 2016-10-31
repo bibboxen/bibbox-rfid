@@ -183,17 +183,17 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	/**
 	 * onMessage WebSocket.
 	 * 
-	 * Handle events from socket.
+	 * This method is called whenever the WebSocket client receives a message.
 	 */
 	@Override
 	public void onMessage(String message) {
-		// This method is called whenever the websocket client receives a
-		// message.
+		JSONParser parser = new JSONParser();
+		JSONObject callback = new JSONObject();
+
 		logger.log("WebSocket: message RECEIVED: " + message);
+
 		try {
-			JSONParser parser = new JSONParser();
 			JSONObject jsonMessage = (JSONObject) parser.parse(message);
-			JSONObject callback = new JSONObject();
 
 			// detectTags Event
 			if (jsonMessage.get("event").equals("detectTags")) {
@@ -218,9 +218,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 					callback.put("AFI", afi);
 					callback.put("success", false);
 					callback.put("message", "You need to insert a MID and an AFI");
-				}
-				
-				send(callback.toJSONString());
+				}				
 			} 
 			// setAFI Event
 			else if (jsonMessage.get("event").equals("setAFI")) {
@@ -230,37 +228,44 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 					String afi = jsonMessage.get("afi").toString();
 					String uid = jsonMessage.get("uid").toString();
 
-					if (!uid.equals("") && uid != null && uid != "") {
-						if (!afi.equals("") && afi != null && afi != "") {
+					callback.put("UID", uid);
+					callback.put("AFI", afi);
+					
+					if (!uid.equals("") && uid != null) {
+						if (!afi.equals("") && afi != null) {
 							tagReader.setUidToWriteAfiTo(uid);
 							tagReader.setAFI(afi);
 							tagReader.setState("tagSetAFIOnUID");
 							callback.put("success", true);
 						}
 					} else {
-						if (!afi.equals("") && afi != null && afi != "") {
+						if (!afi.equals("") && afi != null) {
 							tagReader.setAFI(afi);
 							tagReader.setState("tagSetAFI");
 							callback.put("success", true);
 						} else {
 							callback.put("success", false);
+							callback.put("message", "You need to insert an AFI");
 						}
 					}
-				} catch (NullPointerException e) {
-					callback.put("success", false);
-					e.printStackTrace();
-					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				} catch (Exception e) {
 					callback.put("success", false);
+					callback.put("message", e.getMessage());
+			
 					e.printStackTrace();
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}
-
-				send(callback.toJSONString());
 			}
+			
+			send(callback.toJSONString());
 		} catch (ParseException ex) {
 			ex.printStackTrace();
 			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+			
+			callback.put("event", "error");
+			callback.put("message", ex.getMessage());
+			
+			send(callback.toJSONString());
 		}
 	}
 	
