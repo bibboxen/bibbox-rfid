@@ -22,12 +22,12 @@ import org.json.simple.parser.ParseException;
  * 
  * Handles communication with FEIG reader and WebSocket.
  * 
- * @TODO: Replace org.json.simple.JSON* with GSON: https://github.com/google/gson to avoid type warnings.
+ * @TODO: Replace org.json.simple.JSON* with GSON:
+ *        https://github.com/google/gson to avoid type warnings.
  */
 public class ClientImpl extends WebSocketClient implements TagListenerInterface, FeIscListener {
 	private FedmIscReader fedm;
 	private TagReader tagReader;
-	private ArrayList<BibTag> bibTags;
 	private LoggerImpl logger;
 	private Boolean connected = false;
 
@@ -51,21 +51,23 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		if (!initiateFeigReader()) {
 			// @TODO: Emit error.
 			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
-		}
-		
-		// Open USBPort
-		if (openUSBPort()) {
-			// @TODO: Emit.
-			logger.log("USB Connection: ESTABLISHED");
-		} 
-		else {
-			// @TODO: Emit error.
-			logger.log("USB Connection: Error - NO USB CONNECTION");
-		}
+			tagReader.setRunning(false);
+		} else {
+			// Open USBPort
+			if (openUSBPort()) {
+				// @TODO: Emit.
+				logger.log("USB Connection: ESTABLISHED");
 
-		// Start TagReader.
-		tagReader = new TagReader(this, fedm, logger);
-		tagReader.start();
+				// Start TagReader.
+				tagReader = new TagReader(this, fedm, logger);
+				tagReader.setRunning(true);
+				tagReader.start();
+			} else {
+				// @TODO: Emit error.
+				tagReader.setRunning(false);
+				logger.log("USB Connection: Error - NO USB CONNECTION");
+			}
+		}
 	}
 
 	/**
@@ -85,11 +87,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		if (fedm == null) {
 			return false;
 		}
-		
+
 		// Set the table size of the reader.
 		// As of now it has been set to 50
 		// which means the reader can read an inventory of max 50.
-		// This can be set to for instance 100.
+		// The reader will therefore work best when 50 tags on reader.
 		try {
 			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 50);
 			return true;
@@ -121,13 +123,16 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 			return true;
 		} catch (FedmException ex) {
 			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
-			ex.printStackTrace();
+			tagReader.setRunning(false);
+			System.out.println("FEIGReader not connected to usb");
 		} catch (FePortDriverException ex) {
 			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			ex.printStackTrace();
+			tagReader.setRunning(false);
+			System.out.println("FEIGReader not connected to usb: FePortDriverException");
 		} catch (FeReaderDriverException ex) {
 			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			ex.printStackTrace();
+			tagReader.setRunning(false);
+			System.out.println("FEIGReader not connected to usb: FeReaderDriverException");
 		}
 		return false;
 	}
@@ -162,12 +167,12 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	public void onOpen(ServerHandshake sh) {
 		// WebSocket client connected to server
 		logger.log("WebSocket: connection OPEN");
-		
+
 		// Send connected to server.
 		JSONObject json = new JSONObject();
 		json.put("event", "connected");
 		send(json.toJSONString());
-		
+
 		connected = true;
 	}
 
@@ -190,38 +195,37 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 			if (jsonMessage.get("event").equals("detectTags")) {
 				tagReader.setState("detectTags");
 
-			} 
+			}
 			// setTag Event
 			else if (jsonMessage.get("event").equals("setTag")) {
-				String mid = jsonMessage.get("mid").toString();
-				String afi = jsonMessage.get("afi").toString();
+				String mid = jsonMessage.get("MID").toString();
+				String afi = jsonMessage.get("AFI").toString();
 
 				callback.put("event", "setTagResult");
-				
+
 				if (mid != null && !mid.equals("") && afi != null && !afi.equals("")) {
 					tagReader.setMID(mid);
 					tagReader.setAFI(afi);
 					tagReader.setState("tagSet");
 					callback.put("success", true);
-				}
-				else {
+				} else {
 					callback.put("MID", mid);
 					callback.put("AFI", afi);
 					callback.put("success", false);
 					callback.put("message", "You need to insert a MID and an AFI");
-				}				
-			} 
+				}
+			}
 			// setAFI Event
 			else if (jsonMessage.get("event").equals("setAFI")) {
 				callback.put("event", "setAFIResult");
-				
+
 				try {
-					String afi = jsonMessage.get("afi").toString();
-					String uid = jsonMessage.get("uid").toString();
+					String afi = jsonMessage.get("AFI").toString();
+					String uid = jsonMessage.get("UID").toString();
 
 					callback.put("UID", uid);
 					callback.put("AFI", afi);
-					
+
 					if (!uid.equals("") && uid != null) {
 						if (!afi.equals("") && afi != null) {
 							tagReader.setUidToWriteAfiTo(uid);
@@ -242,24 +246,24 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 				} catch (Exception e) {
 					callback.put("success", false);
 					callback.put("message", e.getMessage());
-			
+
 					e.printStackTrace();
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}
 			}
-			
+
 			send(callback.toJSONString());
 		} catch (ParseException ex) {
 			ex.printStackTrace();
 			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
-			
+
 			callback.put("event", "error");
 			callback.put("message", ex.getMessage());
-			
+
 			send(callback.toJSONString());
 		}
 	}
-	
+
 	/**
 	 * onClose WebSocket.
 	 * 
@@ -269,8 +273,9 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	public void onClose(int i, String string, boolean bln) {
 		// this method is called when connection to websocket server is closed.
 		logger.log("WebSocket: connection CLOSED");
-		
+
 		connected = false;
+		tagReader.setRunning(false);
 	}
 
 	/**
@@ -279,6 +284,8 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	@Override
 	public void onError(Exception ex) {
 		logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+		connected = false;
+		tagReader.setRunning(false);
 	}
 
 	/**
@@ -321,11 +328,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 			JSONObject tag = new JSONObject();
 			tag.put("UID", bibTag.getUID());
 			tag.put("MID", bibTag.getMID());
-		
+
 			JSONObject json = new JSONObject();
 			json.put("tag", tag);
 			json.put("event", "tagDetected");
-			
+
 			send(json.toJSONString());
 		}
 	}
@@ -341,11 +348,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 			JSONObject tag = new JSONObject();
 			tag.put("UID", bibTag.getUID());
 			tag.put("MID", bibTag.getMID());
-		
+
 			JSONObject json = new JSONObject();
 			json.put("tag", tag);
 			json.put("event", "tagRemoved");
-			
+
 			send(json.toJSONString());
 		}
 	}
@@ -354,7 +361,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	public void tagsDetected(ArrayList<BibTag> bibTags) {
 		if (connected) {
 			JSONArray jsonArray = new JSONArray();
-			
+
 			// Add bibTags
 			for (BibTag bibTag : bibTags) {
 				JSONObject json = new JSONObject();
@@ -362,12 +369,16 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 				json.put("MID", bibTag.getMID());
 				jsonArray.add(json);
 			}
-			
+
 			// Setup return object
 			JSONObject returnObj = new JSONObject();
 			returnObj.put("tags", jsonArray);
 			returnObj.put("event", "tagsDetected");
 			send(returnObj.toJSONString());
 		}
+	}
+
+	public boolean isConnected() {
+		return this.connected;
 	}
 }
