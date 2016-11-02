@@ -274,6 +274,10 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		// this method is called when connection to websocket server is closed.
 		logger.log("WebSocket: connection CLOSED");
 
+		if (fedm.isConnected()) {
+			closeConnection();
+		}
+
 		connected = false;
 		tagReader.setRunning(false);
 	}
@@ -284,6 +288,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	@Override
 	public void onError(Exception ex) {
 		logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+
+		if (fedm.isConnected()) {
+			closeConnection();
+		}
+
 		connected = false;
 		tagReader.setRunning(false);
 	}
