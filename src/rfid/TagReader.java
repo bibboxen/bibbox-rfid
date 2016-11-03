@@ -45,12 +45,11 @@ public class TagReader extends Thread {
 		// to read four blocks which is enough
 		// to get the MID on a bib tag.
 		// Then the MID is created and returnen.
-		String mid = "";
 		String b0 = readSpecificBlock(id, (byte) 0);
 		String b1 = readSpecificBlock(id, (byte) 1);
 		String b2 = readSpecificBlock(id, (byte) 2);
 		String b3 = readSpecificBlock(id, (byte) 3);
-		mid = b0 + b1 + b2 + b3;
+		String mid = b0 + b1 + b2 + b3;
 
 		try{
             String midSub = mid.substring(6, 26);
@@ -60,7 +59,7 @@ public class TagReader extends Thread {
         } catch(Exception ex){
         	// Ignore.
             ex.printStackTrace();
-            logger.log("Could not create MID");
+            logger.log("Could not create MID: " + mid);
         }
 	
 		return "";
@@ -276,12 +275,7 @@ public class TagReader extends Thread {
 
 	public void run() {
 		while (running) {
-			String[] tagType;
 			String[] serialNumber;
-			byte[] data = null;
-			byte blockSize = 0;
-			int idx = 0;
-			int back = 0;
 
 			try {
 				fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
@@ -298,7 +292,6 @@ public class TagReader extends Thread {
 				}
 
 				serialNumber = new String[fedm.getTableLength(FedmIscReaderConst.ISO_TABLE)];
-				tagType = new String[fedm.getTableLength(FedmIscReaderConst.ISO_TABLE)];
 
 				bibTags.clear();
 								
@@ -306,63 +299,36 @@ public class TagReader extends Thread {
 				for (int i = 0; i < fedm.getTableLength(FedmIscReaderConst.ISO_TABLE); i++) {
 					serialNumber[i] = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE,
 							FedmIscReaderConst.DATA_SNR);
+					
+				    // For every tag on scanner > create a BibTag object
+					// with the UID and MID.
+					BibTag bibTag = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
+					
 				    if (state.equals("tagSet")) {
 						// set MID and AFI on all tags
-						BibTag b = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
 						writeMIDToMultipleBlocks(serialNumber[i]);
 						writeAFI(serialNumber[i], getAFI());
-						b.setAFI(getAFI());
-						bibTags.add(b);
+						bibTag.setAFI(getAFI());
 					} 
 					else if (state.equals("tagSetAFI")) {
 						// set AFI on all tags
-						BibTag b = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
 						writeAFI(serialNumber[i], getAFI());
-						b.setAFI(getAFI());
-						bibTags.add(b);
+						bibTag.setAFI(getAFI());
 
 					} 
 					else if (state.equals("tagSetAFIOnUID")) {
 						// set AFI on specific UID
 						String bookUID = serialNumber[i];
 						if (bookUID.equals(uidToWriteTo)) {
-							BibTag b = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
 							writeAFI(serialNumber[i], getAFI());
-							b.setAFI(getAFI());
-							bibTags.add(b);
+							bibTag.setAFI(getAFI());
 						} 
 						else {
 							setCallbackMessage("UID: " + serialNumber[i] + ", could not be found on reader");
 						}
 					}
-					else {
-						// For every tag on scanner > create a BibTag object
-						// with the UID and MID.
-						bibTags.add(new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i])));
-					}
 
-					tagType[i] = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_TRTYPE);
-
-					if (tagType[i].equals("00"))
-						tagType[i] = "Philips I-Code1";
-					if (tagType[i].equals("01"))
-						tagType[i] = "Texas Instruments Tag-it HF";
-					if (tagType[i].equals("03"))
-						tagType[i] = "ISO15693 Transponder";
-					if (tagType[i].equals("04"))
-						tagType[i] = "ISO14443-A";
-					if (tagType[i].equals("05"))
-						tagType[i] = "ISO14443-B";
-					if (tagType[i].equals("06"))
-						tagType[i] = "I-CODE EPC";
-					if (tagType[i].equals("07"))
-						tagType[i] = "I-CODE UID";
-					if (tagType[i].equals("09"))
-						tagType[i] = "EPC Class1 Gen2 HF";
-					if (tagType[i].equals("81"))
-						tagType[i] = "ISO18000-6-B";
-					if (tagType[i].equals("84"))
-						tagType[i] = "EPC Class1 Gen2 UHF";
+					bibTags.add(bibTag);
 				}
 
 				// Compare current tags with tags detected.
