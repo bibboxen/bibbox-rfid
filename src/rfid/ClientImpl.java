@@ -89,11 +89,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		}
 
 		// Set the table size of the reader.
-		// As of now it has been set to 50
-		// which means the reader can read an inventory of max 50.
-		// The reader will therefore work best when 50 tags on reader.
+		// As of now it has been set to 20
+		// which means the reader can read an inventory of max 20.
+		// The reader will therefore work best when 20 tags on reader.
 		try {
-			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 50);
+			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 20);
 			return true;
 		} catch (FedmException ex) {
 			ex.printStackTrace();
