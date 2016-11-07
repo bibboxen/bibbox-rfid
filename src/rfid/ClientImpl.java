@@ -25,11 +25,11 @@ import org.json.simple.parser.ParseException;
  * @TODO: Replace org.json.simple.JSON* with GSON:
  *        https://github.com/google/gson to avoid type warnings.
  */
-public class ClientImpl extends WebSocketClient implements TagListenerInterface, FeIscListener {
-	private FedmIscReader fedm;
-	private TagReader tagReader;
+public class ClientImpl extends WebSocketClient implements TagListenerInterface {
+	private TagReaderInterface tagReader;
 	private LoggerImpl logger;
-	private Boolean connected = false;
+	private Boolean connected;
+	private Boolean debug;
 
 	/**
 	 * Constructor.
@@ -41,123 +41,15 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	 * @param draft
 	 * @param logger
 	 */
-	public ClientImpl(URI serverUri, Draft draft, LoggerImpl logger) {
+	public ClientImpl(URI serverUri, Draft draft, LoggerImpl logger, Boolean debug) {
 		// Call constructor of WebSocketClient.
 		super(serverUri, draft);
 
 		this.logger = logger;
-
-		// Initialize FEIG Reader.
-		if (!initiateFeigReader()) {
-			// @TODO: Emit error.
-			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
-			tagReader.setRunning(false);
-		} else {
-			// Open USBPort
-			if (openUSBPort()) {
-				// @TODO: Emit.
-				logger.log("USB Connection: ESTABLISHED");
-
-				// Start TagReader.
-				tagReader = new TagReader(this, fedm, logger);
-				tagReader.setRunning(true);
-				tagReader.start();
-			} else {
-				// @TODO: Emit error.
-				tagReader.setRunning(false);
-				logger.log("USB Connection: Error - NO USB CONNECTION");
-			}
-		}
-	}
-
-	/**
-	 * Initialize FeigReader
-	 * 
-	 * @return Boolean
-	 */
-	public boolean initiateFeigReader() {
-		// Initiate the reader object.
-		try {
-			fedm = new FedmIscReader();
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
-		}
-
-		if (fedm == null) {
-			return false;
-		}
-
-		// Set the table size of the reader.
-		// As of now it has been set to 20
-		// which means the reader can read an inventory of max 20.
-		// The reader will therefore work best when 20 tags on reader.
-		try {
-			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 20);
-			return true;
-		} catch (FedmException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.getStackTrace());
-		}
-		return false;
-	}
-
-	/**
-	 * Open USB port.
-	 * 
-	 * @return Boolean
-	 */
-	public boolean openUSBPort() {
-		// Close connection if any has already been established.
-		closeConnection();
-
-		// Connect to usb
-		try {
-			fedm.connectUSB(0);
-			fedm.addEventListener(this, FeIscListener.SEND_STRING_EVENT);
-			fedm.addEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
-
-			// Read important reader properties and set reader type in reader
-			// object
-			fedm.readReaderInfo();
-			return true;
-		} catch (FedmException ex) {
-			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
-			tagReader.setRunning(false);
-			System.out.println("FEIGReader not connected to usb");
-		} catch (FePortDriverException ex) {
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			tagReader.setRunning(false);
-			System.out.println("FEIGReader not connected to usb: FePortDriverException");
-		} catch (FeReaderDriverException ex) {
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			tagReader.setRunning(false);
-			System.out.println("FEIGReader not connected to usb: FeReaderDriverException");
-		}
-		return false;
-	}
-
-	/**
-	 * Close connection to FeigReader.
-	 */
-	private void closeConnection() {
-		// close connection there is any
-		if (fedm.isConnected()) {
-			try {
-				fedm.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
-				fedm.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
-				fedm.disConnect();
-			} catch (FedmException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
-			} catch (FePortDriverException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			} catch (FeReaderDriverException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			}
-		}
+		this.debug = debug;
+		
+		// Initialize TagReader.
+		tagReader = new FeigReader(logger, this, debug);
 	}
 
 	/**
@@ -193,60 +85,19 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 
 			// detectTags Event
 			if (jsonMessage.get("event").equals("detectTags")) {
-				tagReader.setState("detectTags");
-
-			}
-			// setTag Event
-			else if (jsonMessage.get("event").equals("setTag")) {
-				String mid = jsonMessage.get("MID").toString();
-				String afi = jsonMessage.get("AFI").toString();
-
-				callback.put("event", "setTagResult");
-
-				if (mid != null && !mid.equals("") && afi != null && !afi.equals("")) {
-					tagReader.setMID(mid);
-					tagReader.setAFI(afi);
-					tagReader.setState("tagSet");
-					callback.put("success", true);
-				} else {
-					callback.put("MID", mid);
-					callback.put("AFI", afi);
-					callback.put("success", false);
-					callback.put("message", "You need to insert a MID and an AFI");
-				}
+				tagReader.detectCurrentTags();
 			}
 			// setAFI Event
 			else if (jsonMessage.get("event").equals("setAFI")) {
-				callback.put("event", "setAFIResult");
-
 				try {
 					String afi = jsonMessage.get("AFI").toString();
 					String uid = jsonMessage.get("UID").toString();
 
-					callback.put("UID", uid);
-					callback.put("AFI", afi);
-
-					if (!uid.equals("") && uid != null) {
-						if (!afi.equals("") && afi != null) {
-							tagReader.setUidToWriteAfiTo(uid);
-							tagReader.setAFI(afi);
-							tagReader.setState("tagSetAFIOnUID");
-							callback.put("success", true);
-						}
-					} else {
-						if (!afi.equals("") && afi != null) {
-							tagReader.setAFI(afi);
-							tagReader.setState("tagSetAFI");
-							callback.put("success", true);
-						} else {
-							callback.put("success", false);
-							callback.put("message", "You need to insert an AFI");
-						}
+					// Only set tag and 
+					if (!uid.equals("") && uid != null && !afi.equals("") && afi != null) {
+						tagReader.addEventSetTagAFI(uid, afi);
 					}
 				} catch (Exception e) {
-					callback.put("success", false);
-					callback.put("message", e.getMessage());
-
 					e.printStackTrace();
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}
@@ -274,12 +125,12 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 		// this method is called when connection to websocket server is closed.
 		logger.log("WebSocket: connection CLOSED");
 
-		if (fedm.isConnected()) {
+		/*if (fedm.isConnected()) {
 			closeConnection();
-		}
+		}*/
 
 		connected = false;
-		tagReader.setRunning(false);
+		//tagReader.setRunning(false);
 	}
 
 	/**
@@ -289,41 +140,12 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	public void onError(Exception ex) {
 		logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 
-		if (fedm.isConnected()) {
+		/*if (fedm.isConnected()) {
 			closeConnection();
-		}
+		}*/
 
 		connected = false;
-		tagReader.setRunning(false);
-	}
-
-	/**
-	 * onSendProtocol FeigReader
-	 */
-	@Override
-	public void onSendProtocol(FedmIscReader reader, String string) {
-	}
-
-	/**
-	 * onReceiveProtocol FeigReader
-	 */
-	@Override
-	public void onReceiveProtocol(FedmIscReader reader, String string) {
-
-	}
-
-	/**
-	 * onSendProtocol FeigReader
-	 */
-	@Override
-	public void onSendProtocol(FedmIscReader reader, byte[] bytes) {
-	}
-
-	/**
-	 * onReceiveProtocol FeigReader
-	 */
-	@Override
-	public void onReceiveProtocol(FedmIscReader reader, byte[] bytes) {
+		//tagReader.setRunning(false);
 	}
 
 	/**
@@ -389,5 +211,19 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 
 	public boolean isConnected() {
 		return this.connected;
+	}
+
+
+	@Override
+	public void tagAFISetSuccess(BibTag bibTag) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void tagAFISetFailure(BibTag bibTag) {
+		// TODO Auto-generated method stub
+		
 	}
 }

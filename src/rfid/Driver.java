@@ -16,7 +16,8 @@ import org.java_websocket.drafts.Draft_10;
  */
 public class Driver {
 	private static String host;
-	private static int port;
+	private static Integer port;
+	private static Boolean debug;
 	private static LoggerImpl logger;
 	private static ClientImpl client;
 
@@ -44,7 +45,7 @@ public class Driver {
 		// Timer that checks if client is connected. If not, try create an new
 		// connection.
 		try {
-			client = new ClientImpl(new URI("ws://" + host + ":" + port), new Draft_10(), logger);
+			client = new ClientImpl(new URI("ws://" + host + ":" + port), new Draft_10(), logger, debug);
 			client.connect();
 
 			Timer t = new Timer();
@@ -66,8 +67,8 @@ public class Driver {
 	}
 
 	/**
-	 * Close websocket client and set to null. Create new instance of the
-	 * websocket client.
+	 * Close WebSocket client and set to null. Create new instance of the
+	 * WebSocket client.
 	 */
 
 	public static void createNewWebSocketInstance() {
@@ -76,7 +77,7 @@ public class Driver {
 		try {
 			System.out.println("Websocket client: TRYING TO CONNECT TO:  " + host + ":" + port);
 			logger.log("Websocket client trying to connect to " + host + ":" + port);
-			client = new ClientImpl(new URI("ws://" + host + ":" + port), new Draft_10(), logger);
+			client = new ClientImpl(new URI("ws://" + host + ":" + port), new Draft_10(), logger, debug);
 			client.connect();
 		} catch (URISyntaxException ex) {
 			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
@@ -93,6 +94,7 @@ public class Driver {
 			properties.setPropValues();
 			host = properties.getHostProperty();
 			port = properties.getPortProperty();
+			debug = properties.getDebugProperty();
 			return true;
 
 		} catch (IOException ex) {

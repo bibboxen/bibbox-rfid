@@ -12,7 +12,8 @@ import java.util.Properties;
  */
 public class GetPropertiesImpl {
 	private String host;
-	private int port;
+	private Integer port;
+	private Boolean debug;
 
 	/**
 	 * Set Properties values.
@@ -33,6 +34,7 @@ public class GetPropertiesImpl {
 
 			host = prop.getProperty("host");
 			port = Integer.parseInt(prop.getProperty("port"));
+			debug = Boolean.parseBoolean(prop.getProperty("debug"));
 		} catch (Exception ex) {
 			// @TODO: Handle error.
 		}
@@ -52,9 +54,18 @@ public class GetPropertiesImpl {
 	/**
 	 * Get port.
 	 * 
-	 * @return int
+	 * @return Integer
 	 */
 	public int getPortProperty() {
 		return this.port;
+	}
+	
+	/**
+	 * Get debug.
+	 * 
+	 * @return Boolean
+	 */
+	public boolean getDebugProperty() {
+		return this.debug;
 	}
 }

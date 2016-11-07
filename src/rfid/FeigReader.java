@@ -1,50 +1,138 @@
 package rfid;
 
+import java.util.ArrayList;
+
+import de.feig.FeIscListener;
 import de.feig.FePortDriverException;
 import de.feig.FeReaderDriverException;
 import de.feig.FedmException;
 import de.feig.FedmIscReader;
 import de.feig.FedmIscReaderConst;
 import de.feig.FedmIscReaderID;
-import java.util.ArrayList;
 
-/**
- * This is the reader class.
- * This class handles the following states: detectTags, tagSet, tagSetAFI.
- * This is also the class that can write to tags
-*/
-public class TagReader extends Thread {
-	private FedmIscReader fedm = null;
-	private boolean running = true;
-	private TagListenerInterface tagListener;
-	private ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
-	private String state = "";
-	private String AFI = "07"; // standard that the book is in the house
-	private String MID;
-	private String uidToWriteTo;
+public class FeigReader extends Thread implements FeIscListener, TagReaderInterface {
+	private FedmIscReader fedm;
+
 	private LoggerImpl logger;
-	private String callbackMessage = "";
+	private TagListenerInterface tagListener;
+	private Boolean debug;
+
+	private Boolean connected = false;
+	private Boolean running = false;
+	private Boolean detectCurrentTags = false;
+	private ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
 	private ArrayList<BibTag> currentTags = new ArrayList<BibTag>();
+	private ArrayList<EventSetAFI> eventsSetAFI = new ArrayList<EventSetAFI>();
 
-	public TagReader(TagListenerInterface tagListener, FedmIscReader fedm, LoggerImpl logger) {
-		this.fedm = fedm;
-		this.tagListener = tagListener;
+	/**
+	 * Constructor.
+	 * 
+	 * @param logger
+	 *   The logger implementation.
+	 * @param tagListener
+	 *   The tag listener where reader events are passed to.
+	 */
+	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener, Boolean debug) {
 		this.logger = logger;
+		this.tagListener = tagListener;
+		this.debug = debug;
+	}	
+
+	/**
+	 * Initialize FeigReader
+	 * 
+	 * @return Boolean
+	 */
+	private Boolean initiateFeigReader() {
+		// Initiate the reader object.
+		try {
+			fedm = new FedmIscReader();
+		} catch (Exception ex) {
+			// @TODO: Handle.
+			ex.printStackTrace();
+			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+			return false;
+		}
+
+		if (fedm == null) {
+			return false;
+		}
+
+		// Set the table size of the reader.
+		// As of now it has been set to 20
+		// which means the reader can read an inventory of max 20.
+		// The reader will therefore work best when 20 tags on reader.
+		try {
+			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 20);
+			return true;
+		} catch (FedmException ex) {
+			ex.printStackTrace();
+			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.getStackTrace());
+		}
+		return false;
+	}
+	
+	/**
+	 * Open USB port.
+	 * 
+	 * @throws FeReaderDriverException 
+	 * @throws FePortDriverException 
+	 * @throws FedmException 
+	 */
+	private void openUSBPort() throws FedmException, FePortDriverException, FeReaderDriverException {
+		// Close connection if any has already been established.
+		closeConnection();
+
+		// Connect to USB.
+		fedm.connectUSB(0);
+		fedm.addEventListener(this, FeIscListener.SEND_STRING_EVENT);
+		fedm.addEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
+
+		// Read important reader properties and set reader type in reader object.
+		fedm.readReaderInfo();
 	}
 
-	public void setState(String state) {
-		this.state = state;
+	/**
+	 * Close connection to FeigReader.
+	 * 
+	 * @throws FedmException 
+	 * @throws FeReaderDriverException 
+	 * @throws FePortDriverException 
+	 */
+	private void closeConnection() throws FedmException, FePortDriverException, FeReaderDriverException {
+		// Close connection if there is any.
+		if (fedm.isConnected()) {
+			fedm.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
+			fedm.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
+			fedm.disConnect();
+		}
 	}
+	
+	@Override
+	public void onReceiveProtocol(FedmIscReader arg0, String arg1) {}
 
-	public String getMID() {
-		return this.MID;
-	}
+	@Override
+	public void onReceiveProtocol(FedmIscReader arg0, byte[] arg1) {}
 
-	public String getMIDFromMultipleBlocks(String id) {
+	@Override
+	public void onSendProtocol(FedmIscReader arg0, String arg1) {}
+
+	@Override
+	public void onSendProtocol(FedmIscReader arg0, byte[] arg1) {}
+
+	/**
+	 * Get the MID.
+	 * 
+	 * @param id
+	 *   @TODO: What is this id?
+	 * 
+	 * @return
+	 */
+	private String getMIDFromMultipleBlocks(String id) {
 		// This method uses readSpecific block
 		// to read four blocks which is enough
 		// to get the MID on a bib tag.
-		// Then the MID is created and returnen.
+		// Then the MID is created and returned.
 		String b0 = readSpecificBlock(id, (byte) 0);
 		String b1 = readSpecificBlock(id, (byte) 1);
 		String b2 = readSpecificBlock(id, (byte) 2);
@@ -65,11 +153,20 @@ public class TagReader extends Thread {
 		return "";
 	}
 
-	public String readSpecificBlock(String id, byte dbAddress) {
-		// This method is used when
-		// reading a specific block (dbAddress)
-		// This method is used in the getMIDFromMultipleBlocks method
-		byte[] dataBlock = null;
+	/**
+	 * Read block.
+	 * 
+	 * This method is used when reading a specific block (dbAddress).
+	 * 
+	 * @param id
+	 *   @TODO
+	 * @param dbAddress
+	 *   The block address.
+	 *   
+	 * @return String
+	 *   @TODO
+	 */
+	private String readSpecificBlock(String id, byte dbAddress) {
 		String dataBlockString = null;
 
 		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
@@ -86,11 +183,7 @@ public class TagReader extends Thread {
 			if (idx < 0) {
 				return "";
 			}
-			byte blockSize = fedm.getByteTableData(idx, FedmIscReaderConst.ISO_TABLE,
-					FedmIscReaderConst.DATA_BLOCK_SIZE);
-
-			dataBlockString = fedm.getStringTableData(idx, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_RxDB,
-					dbAddress);
+			dataBlockString = fedm.getStringTableData(idx, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_RxDB, dbAddress);
 
 			return dataBlockString;
 		} catch (FePortDriverException ex) {
@@ -106,7 +199,14 @@ public class TagReader extends Thread {
 		return "";
 	}
 
-	public void writeSpecificBlock(String data, String id, byte dbAddress) {
+	/**
+	 * Write block.
+	 * 
+	 * @param data
+	 * @param id
+	 * @param dbAddress
+	 */
+	private void writeSpecificBlock(String data, String id, byte dbAddress) {
 		// This is method is used to write
 		// any string data to a specific block
 		// on a tag(dbAddress). This is used in the
@@ -144,6 +244,12 @@ public class TagReader extends Thread {
 		}
 	}
 
+	/**
+	 * Get Byte array from string
+	 * 
+	 * @param large
+	 * @return
+	 */
 	public byte[] getByteArrayFromString(String large) {
 		// this method can be used to retrieve a
 		// byte array from any string.
@@ -161,14 +267,18 @@ public class TagReader extends Thread {
 		return bytes;
 	}
 
-	public void writeMIDToMultipleBlocks(String id) {
+	/**
+	 * Write MID.
+	 * 
+	 * @param id
+	 */
+	public void writeMIDToMultipleBlocks(String id, String midDec) {
 		// this method uses writeSpecific block
 		// to write the MID to tags. The MID fills
 		// up multiple blocks, which is why we must
 		// split up the MID into blocks and the
 		// write to each specific block
 
-		String midDec = getMID();
 		String m1 = midDec.substring(0, 6);
 		String m2 = midDec.substring(6, midDec.length());
 
@@ -201,7 +311,13 @@ public class TagReader extends Thread {
 		writeSpecificBlock(mid2Ascii.get(9) + "000000", id, (byte) 3);
 	}
 
-	public void writeAFI(String id, String afi) {
+	/**
+	 * Write AFI.
+	 * 
+	 * @param id
+	 * @param afi
+	 */
+	public Boolean writeAFI(String id, String afi) {
 		// This method can be called whenever you
 		// want to write the AFI on a tag.
 		byte byteAfi = (byte) 0x07;
@@ -210,11 +326,13 @@ public class TagReader extends Thread {
 		} else if (afi.equals("7") || afi.equals("07")) {
 			byteAfi = (byte) 0x07;
 		}
+		
 		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
+		
 		try {
 			int idx = fedm.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
 			if (idx < 0) {
-				return;
+				return false;
 			}
 
 			fedm.setTableData(idx, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_AFI, byteAfi);
@@ -224,55 +342,17 @@ public class TagReader extends Thread {
 
 			fedm.sendProtocol((byte) 0xB0);
 
-		} catch (FedmException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
-		} catch (FePortDriverException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-		} catch (FeReaderDriverException ex) {
-			// if something happens when sending protocol
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.log("Error code: " + e.getMessage() + "\n" + e.toString());
+			return false;
 		}
 	}
 
-	public ArrayList<BibTag> getCurrentBibTagsOnScanner() {
-		return bibTags;
-	}
-
-	public void setAFI(String AFI) {
-		this.AFI = AFI;
-	}
-
-	public String getAFI() {
-		return this.AFI;
-	}
-
-	public void setMID(String MID) {
-		this.MID = MID;
-	}
-
-	public void setUidToWriteAfiTo(String uid) {
-		this.uidToWriteTo = uid;
-	}
-
-	public void setCallbackMessage(String message) {
-		this.callbackMessage = message;
-	}
-
-	public String getCallbackMessage() {
-		return this.callbackMessage;
-	}
-        
-        public void setRunning(boolean running){
-            this.running = running;
-        }
-        
-        public boolean getRunning(){
-            return this.running;
-        }
-
+	/**
+	 * Start the thread.
+	 */
 	public void run() {
 		while (running) {
 			String[] serialNumber;
@@ -291,46 +371,22 @@ public class TagReader extends Thread {
 					fedm.sendProtocol((byte) 0xB0);
 				}
 
-				serialNumber = new String[fedm.getTableLength(FedmIscReaderConst.ISO_TABLE)];
+				// Get number of entries in the ISO_TABLE.
+				int tableLength = fedm.getTableLength(FedmIscReaderConst.ISO_TABLE);
+				
+				// Initialize arrays.
+				String[] tags = new String[tableLength];
 
+				// Clear registered tags.
 				bibTags.clear();
 								
 				// Register tags on device.
-				for (int i = 0; i < fedm.getTableLength(FedmIscReaderConst.ISO_TABLE); i++) {
-					serialNumber[i] = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE,
-							FedmIscReaderConst.DATA_SNR);
+				for (int i = 0; i < tableLength; i++) {
+					String UID = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR);
 					
-				    // For every tag on scanner > create a BibTag object
-					// with the UID and MID.
-					BibTag bibTag = new BibTag(serialNumber[i], getMIDFromMultipleBlocks(serialNumber[i]));
-					
-				    if (state.equals("tagSet")) {
-						// set MID and AFI on all tags
-						writeMIDToMultipleBlocks(serialNumber[i]);
-						writeAFI(serialNumber[i], getAFI());
-						bibTag.setAFI(getAFI());
-					} 
-					else if (state.equals("tagSetAFI")) {
-						// set AFI on all tags
-						writeAFI(serialNumber[i], getAFI());
-						bibTag.setAFI(getAFI());
-
-					} 
-					else if (state.equals("tagSetAFIOnUID")) {
-						// set AFI on specific UID
-						String bookUID = serialNumber[i];
-						if (bookUID.equals(uidToWriteTo)) {
-							writeAFI(serialNumber[i], getAFI());
-							bibTag.setAFI(getAFI());
-						} 
-						else {
-							setCallbackMessage("UID: " + serialNumber[i] + ", could not be found on reader");
-						}
-					}
-
-					bibTags.add(bibTag);
+					bibTags.add(new BibTag(UID, getMIDFromMultipleBlocks(UID)));
 				}
-
+				
 				// Compare current tags with tags detected.
 				// Emit events if changes.
 				for (int i = 0; i < bibTags.size(); i++) {
@@ -363,20 +419,59 @@ public class TagReader extends Thread {
 				// Updated current tags.
 				currentTags = new ArrayList<BibTag>(bibTags);
 
-				// If requested current tags.
-				if (state.equals("detectTags")) {
-					tagListener.tagsDetected(currentTags);
-				}
+				// Process EventSetAFI events.
+				ArrayList<EventSetAFI> events = new ArrayList<EventSetAFI>(eventsSetAFI);
+				eventsSetAFI.clear();
+				
+				for (EventSetAFI event : events) {
+					BibTag tag = null;
+					
+					// Get tag.
+					for (BibTag b : bibTags) {
+						if (b.getUID().equals(event.getUid())) {
+							tag = b;
+							
+							break;
+						}
+					}
+					
+					if (tag != null) {
+						// DEBUG
+						if (debug) {
+							System.out.println("Writing: " + event.toString());
+						}
 
-				// Reset state to default = detecting tags.
-				state = "";
+						if (writeAFI(tag.getUID(), event.getAfi())) {
+							tag.setAFI(event.getAfi());
+							
+							// @TODO: Emit event.
+							
+							tagListener.tagAFISetSuccess(tag);
+						}
+						else {
+							tagListener.tagAFISetFailure(tag);
+						}
+					} 
+					else {
+						logger.log("UID: " + event.getUid() + ", could not be found on reader");
+
+						tagListener.tagAFISetFailure(tag);
+					}
+				}
+				
+				// If requested current tags.
+				if (detectCurrentTags) {
+					tagListener.tagsDetected(currentTags);
+					detectCurrentTags = false;
+				}
 				
 				// DEBUG
-				// logger.log("--------------------------");
-				// logger.log(currentTags.toString());
-				
+				if (debug) {
+					System.out.println(currentTags.toString());
+				}
+
 				try {
-					Thread.sleep(0); // how often the reader scans for tags, every 0 ms. Instant loop.
+					Thread.sleep(0);
 				} catch (InterruptedException e) {
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}
@@ -388,5 +483,73 @@ public class TagReader extends Thread {
 				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 			}
 		}
+	}
+
+	@Override
+	public void startReading() {
+		if (!connected) {
+			connect();
+		}
+		
+		if (!running) {
+			this.start();
+		}
+	}
+
+	@Override
+	public void stopReading() {
+		this.running = false;
+	}
+
+	@Override
+	public Boolean connect() {
+		// Initialize FEIG Reader.
+		if (!initiateFeigReader()) {
+			// @TODO: Emit error.
+			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
+			running = false;
+			return false;
+		} else {
+			try {
+				openUSBPort();
+				logger.log("USB Connection: ESTABLISHED");
+			}
+			catch (Exception e) {
+				logger.log("USB Connection Error: " + e.getMessage());
+				return false;
+			}
+		}
+		return true;
+	}
+
+	@Override
+	public Boolean disconnect() {
+		try {
+			closeConnection();
+			running = false;
+		} catch (Exception e) {
+			logger.log(e.getMessage());
+			return false;
+		}
+		
+		return true;
+	}
+
+	@Override
+	public Boolean isRunning() {
+		return this.running;
+	}
+
+	/**
+	 * Add event - set tag AFI.
+	 */
+	@Override
+	public void addEventSetTagAFI(String uid, String afi) {
+		eventsSetAFI.add(new EventSetAFI(uid, afi));
+	}
+
+	@Override
+	public void detectCurrentTags() {
+		detectCurrentTags = true;
 	}
 }
