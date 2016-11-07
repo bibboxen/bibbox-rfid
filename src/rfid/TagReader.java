@@ -1,3 +1,22 @@
+/* 
+ * Copyright (C) 2016 ID-advice
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * You can redistribute this software and/or modify it under the terms of 
+ * the FEIG Licensing Agreement, which can be found in the OBID folder.
+ */
 package rfid;
 
 import de.feig.FePortDriverException;
@@ -19,7 +38,7 @@ public class TagReader extends Thread {
 	private TagListenerInterface tagListener;
 	private ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
 	private String state = "";
-	private String AFI = "07"; // standard that the book is in the house
+	private String AFI;
 	private String MID;
 	private String uidToWriteTo;
 	private LoggerImpl logger;
@@ -60,7 +79,6 @@ public class TagReader extends Thread {
                     ex.printStackTrace();
                     logger.log("Could not create MID");
                 }
-	
 		return "";
 	}
 
@@ -203,12 +221,10 @@ public class TagReader extends Thread {
 	public void writeAFI(String id, String afi) {
 		// This method can be called whenever you
 		// want to write the AFI on a tag.
-		byte byteAfi = (byte) 0x07;
-		if (afi.equals("194")) {
-			byteAfi = (byte) 0xC2;
-		} else if (afi.equals("7") || afi.equals("07")) {
-			byteAfi = (byte) 0x07;
-		}
+                int dec = Integer.parseInt(afi); //parse afi string to integer
+		String afiHex = Integer.toHexString(dec); //parse dec to hex string.
+                byte byteAfi = (byte)(Integer.parseInt(afiHex, 16) & 0xff); //create byte which represents that hex number
+                
 		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
 		try {
 			int idx = fedm.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
