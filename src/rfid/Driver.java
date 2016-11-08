@@ -33,52 +33,28 @@ public class Driver {
 
 		// Read config.properties.
 		if (!readConfiguration()) {
-			System.out.println("Could not read config.properties file. Make sure it is located next to .jar file");
 			logger.log("config.properties could not be found");
-		}
-
-		if (host == null || host.equals("") || host == "") {
+			
+			// Defaults.
+			port = 3001;
 			host = "localhost";
+			debug = false;
 		}
 
 		// Start client.
-		// Timer that checks if client is connected. If not, try create an new
-		// connection.
 		try {
-			client = new ClientImpl(new URI("ws://" + host + ":" + port), new Draft_10(), logger, debug);
-			client.connect();
+			client = new ClientImpl(new URI("ws://" + host + ":" + port), logger, debug);
 
+			// Make sure the Client is connected every 10 s. 
 			Timer t = new Timer();
 			t.schedule(new TimerTask() {
 				@Override
 				public void run() {
-					if (!client.isConnected()) {
-						System.out.println("Websocket client not connected");
-						logger.log("Websocket client not connected");
-						createNewWebSocketInstance();
-					}
+					client.checkConnections();
 				}
-			}, 5000, 10000); // calls run every tenth second
+			}, 5000, 10000);
 		} catch (Exception e) {
 			logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
-		}
-	}
-
-	/**
-	 * Close WebSocket client and set to null. Create new instance of the
-	 * WebSocket client.
-	 */
-
-	public static void createNewWebSocketInstance() {
-		System.out.println("createNewWebSocketInstance");
-		client.close();
-		client = null;
-		try {
-			logger.log("Websocket client trying to connect to " + host + ":" + port);
-			client = new ClientImpl(new URI("ws://" + host + ":" + port), new Draft_10(), logger, debug);
-			client.connect();
-		} catch (URISyntaxException ex) {
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 		}
 	}
 
