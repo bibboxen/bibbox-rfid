@@ -26,4 +26,11 @@ public interface TagListenerInterface {
 	 * @param bibTags
 	 */
 	public void tagsDetected(ArrayList<BibTag> bibTags);
+	
+	/**
+	 * A tag's AFI has been set.
+	 * 
+	 * @param bibTag
+	 */
+	public void tagAFISet(BibTag bibTag, Boolean success);
 }

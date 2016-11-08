@@ -1,15 +1,8 @@
 package rfid;
 
-import de.feig.FeIscListener;
-import de.feig.FePortDriverException;
-import de.feig.FeReaderDriverException;
-import de.feig.FedmException;
-import de.feig.FedmIscReader;
-import de.feig.FedmIscReaderConst;
 import java.net.URI;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.drafts.Draft;
-import org.java_websocket.handshake.ServerHandshake;
+
+import org.java_websocket.drafts.Draft_10;
 import java.util.ArrayList;
 
 import org.json.simple.JSONArray;
@@ -25,305 +18,51 @@ import org.json.simple.parser.ParseException;
  * @TODO: Replace org.json.simple.JSON* with GSON:
  *        https://github.com/google/gson to avoid type warnings.
  */
-public class ClientImpl extends WebSocketClient implements TagListenerInterface, FeIscListener {
-	private FedmIscReader fedm;
-	private TagReader tagReader;
+public class ClientImpl implements TagListenerInterface, WebSocketListener {
+	private TagReaderInterface tagReader;
+	private WebSocketImpl webSocket;
 	private LoggerImpl logger;
-	private Boolean connected = false;
+	private Boolean debug;
+	private URI serverUri;
 
+	
 	/**
 	 * Constructor.
-	 * 
-	 * @TODO: Move WebSocket implementation into separate class.
-	 * @TODO: Move FEIG implementation into separate class.
-	 * 
+	 *
 	 * @param serverUri
 	 * @param draft
 	 * @param logger
 	 */
-	public ClientImpl(URI serverUri, Draft draft, LoggerImpl logger) {
-		// Call constructor of WebSocketClient.
-		super(serverUri, draft);
-
+	public ClientImpl(URI serverUri, LoggerImpl logger, Boolean debug) {
 		this.logger = logger;
-
-		// Initialize FEIG Reader.
-		if (!initiateFeigReader()) {
-			// @TODO: Emit error.
-			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
-			tagReader.setRunning(false);
-		} else {
-			// Open USBPort
-			if (openUSBPort()) {
-				// @TODO: Emit.
-				logger.log("USB Connection: ESTABLISHED");
-
-				// Start TagReader.
-				tagReader = new TagReader(this, fedm, logger);
-				tagReader.setRunning(true);
-				tagReader.start();
-			} else {
-				// @TODO: Emit error.
-				tagReader.setRunning(false);
-				logger.log("USB Connection: Error - NO USB CONNECTION");
-			}
-		}
+		this.debug = debug;
+		this.serverUri = serverUri;
+		
+		// Initialize TagReader.		
+		tagReader = new FeigReader(logger, this, debug);
 	}
-
+	
 	/**
-	 * Initialize FeigReader
+	 * Check that connections are up.
 	 * 
-	 * @return Boolean
+	 * If not retry.
 	 */
-	public boolean initiateFeigReader() {
-		// Initiate the reader object.
-		try {
-			fedm = new FedmIscReader();
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+	public void checkConnections() {
+		if (webSocket == null || !webSocket.isConnected()) {
+			connectWebSocket();
 		}
-
-		if (fedm == null) {
-			return false;
-		}
-
-		// Set the table size of the reader.
-		// As of now it has been set to 20
-		// which means the reader can read an inventory of max 20.
-		// The reader will therefore work best when 20 tags on reader.
-		try {
-			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 20);
-			return true;
-		} catch (FedmException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.getStackTrace());
-		}
-		return false;
-	}
-
-	/**
-	 * Open USB port.
-	 * 
-	 * @return Boolean
-	 */
-	public boolean openUSBPort() {
-		// Close connection if any has already been established.
-		closeConnection();
-
-		// Connect to usb
-		try {
-			fedm.connectUSB(0);
-			fedm.addEventListener(this, FeIscListener.SEND_STRING_EVENT);
-			fedm.addEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
-
-			// Read important reader properties and set reader type in reader
-			// object
-			fedm.readReaderInfo();
-			return true;
-		} catch (FedmException ex) {
-			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
-			tagReader.setRunning(false);
-			System.out.println("FEIGReader not connected to usb");
-		} catch (FePortDriverException ex) {
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			tagReader.setRunning(false);
-			System.out.println("FEIGReader not connected to usb: FePortDriverException");
-		} catch (FeReaderDriverException ex) {
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			tagReader.setRunning(false);
-			System.out.println("FEIGReader not connected to usb: FeReaderDriverException");
-		}
-		return false;
-	}
-
-	/**
-	 * Close connection to FeigReader.
-	 */
-	private void closeConnection() {
-		// close connection there is any
-		if (fedm.isConnected()) {
-			try {
-				fedm.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
-				fedm.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
-				fedm.disConnect();
-			} catch (FedmException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
-			} catch (FePortDriverException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			} catch (FeReaderDriverException ex) {
-				ex.printStackTrace();
-				logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
-			}
+		
+		if (!tagReader.isRunning()) {
+			tagReader.startReading();
 		}
 	}
 
 	/**
-	 * onOpen WebSocket.
+	 * Open a new WebSocket connection.
 	 */
-	@Override
-	public void onOpen(ServerHandshake sh) {
-		// WebSocket client connected to server
-		logger.log("WebSocket: connection OPEN");
-
-		// Send connected to server.
-		JSONObject json = new JSONObject();
-		json.put("event", "connected");
-		send(json.toJSONString());
-
-		connected = true;
-	}
-
-	/**
-	 * onMessage WebSocket.
-	 * 
-	 * This method is called whenever the WebSocket client receives a message.
-	 */
-	@Override
-	public void onMessage(String message) {
-		JSONParser parser = new JSONParser();
-		JSONObject callback = new JSONObject();
-
-		logger.log("WebSocket: message RECEIVED: " + message);
-
-		try {
-			JSONObject jsonMessage = (JSONObject) parser.parse(message);
-
-			// detectTags Event
-			if (jsonMessage.get("event").equals("detectTags")) {
-				tagReader.setState("detectTags");
-
-			}
-			// setTag Event
-			else if (jsonMessage.get("event").equals("setTag")) {
-				String mid = jsonMessage.get("MID").toString();
-				String afi = jsonMessage.get("AFI").toString();
-
-				callback.put("event", "setTagResult");
-
-				if (mid != null && !mid.equals("") && afi != null && !afi.equals("")) {
-					tagReader.setMID(mid);
-					tagReader.setAFI(afi);
-					tagReader.setState("tagSet");
-					callback.put("success", true);
-				} else {
-					callback.put("MID", mid);
-					callback.put("AFI", afi);
-					callback.put("success", false);
-					callback.put("message", "You need to insert a MID and an AFI");
-				}
-			}
-			// setAFI Event
-			else if (jsonMessage.get("event").equals("setAFI")) {
-				callback.put("event", "setAFIResult");
-
-				try {
-					String afi = jsonMessage.get("AFI").toString();
-					String uid = jsonMessage.get("UID").toString();
-
-					callback.put("UID", uid);
-					callback.put("AFI", afi);
-
-					if (!uid.equals("") && uid != null) {
-						if (!afi.equals("") && afi != null) {
-							tagReader.setUidToWriteAfiTo(uid);
-							tagReader.setAFI(afi);
-							tagReader.setState("tagSetAFIOnUID");
-							callback.put("success", true);
-						}
-					} else {
-						if (!afi.equals("") && afi != null) {
-							tagReader.setAFI(afi);
-							tagReader.setState("tagSetAFI");
-							callback.put("success", true);
-						} else {
-							callback.put("success", false);
-							callback.put("message", "You need to insert an AFI");
-						}
-					}
-				} catch (Exception e) {
-					callback.put("success", false);
-					callback.put("message", e.getMessage());
-
-					e.printStackTrace();
-					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
-				}
-			}
-
-			send(callback.toJSONString());
-		} catch (ParseException ex) {
-			ex.printStackTrace();
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
-
-			callback.put("event", "error");
-			callback.put("message", ex.getMessage());
-
-			send(callback.toJSONString());
-		}
-	}
-
-	/**
-	 * onClose WebSocket.
-	 * 
-	 * @TODO: Reconnect.
-	 */
-	@Override
-	public void onClose(int i, String string, boolean bln) {
-		// this method is called when connection to websocket server is closed.
-		logger.log("WebSocket: connection CLOSED");
-
-		if (fedm.isConnected()) {
-			closeConnection();
-		}
-
-		connected = false;
-		tagReader.setRunning(false);
-	}
-
-	/**
-	 * onError WebSocket.
-	 */
-	@Override
-	public void onError(Exception ex) {
-		logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
-
-		if (fedm.isConnected()) {
-			closeConnection();
-		}
-
-		connected = false;
-		tagReader.setRunning(false);
-	}
-
-	/**
-	 * onSendProtocol FeigReader
-	 */
-	@Override
-	public void onSendProtocol(FedmIscReader reader, String string) {
-	}
-
-	/**
-	 * onReceiveProtocol FeigReader
-	 */
-	@Override
-	public void onReceiveProtocol(FedmIscReader reader, String string) {
-
-	}
-
-	/**
-	 * onSendProtocol FeigReader
-	 */
-	@Override
-	public void onSendProtocol(FedmIscReader reader, byte[] bytes) {
-	}
-
-	/**
-	 * onReceiveProtocol FeigReader
-	 */
-	@Override
-	public void onReceiveProtocol(FedmIscReader reader, byte[] bytes) {
+	public void connectWebSocket() {
+		webSocket = new WebSocketImpl(serverUri, new Draft_10(), this, logger);
+		webSocket.connect();
 	}
 
 	/**
@@ -333,16 +72,20 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	 */
 	@Override
 	public void tagDetected(BibTag bibTag) {
-		if (connected) {
+		if (debug) {
+			System.out.println("Tag detected: " + bibTag);		
+		}
+		
+		if (webSocket.isConnected()) {
 			JSONObject tag = new JSONObject();
-			tag.put("UID", bibTag.getUID());
-			tag.put("MID", bibTag.getMID());
+			tag.put("uid", bibTag.getUID());
+			tag.put("mid", bibTag.getMID());
 
 			JSONObject json = new JSONObject();
 			json.put("tag", tag);
-			json.put("event", "tagDetected");
+			json.put("event", "rfid.tag.detected");
 
-			send(json.toJSONString());
+			webSocket.send(json.toJSONString());
 		}
 	}
 
@@ -353,41 +96,105 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface,
 	 */
 	@Override
 	public void tagRemoved(BibTag bibTag) {
-		if (connected) {
+		if (debug) {
+			System.out.println("Tag removed: " + bibTag);		
+		}
+		
+		if (webSocket.isConnected()) {
 			JSONObject tag = new JSONObject();
-			tag.put("UID", bibTag.getUID());
-			tag.put("MID", bibTag.getMID());
+			tag.put("uid", bibTag.getUID());
+			tag.put("mid", bibTag.getMID());
 
 			JSONObject json = new JSONObject();
 			json.put("tag", tag);
-			json.put("event", "tagRemoved");
+			json.put("event", "rfid.tag.removed");
 
-			send(json.toJSONString());
+			webSocket.send(json.toJSONString());
 		}
 	}
 
 	@Override
 	public void tagsDetected(ArrayList<BibTag> bibTags) {
-		if (connected) {
+		if (webSocket.isConnected()) {
 			JSONArray jsonArray = new JSONArray();
 
 			// Add bibTags
 			for (BibTag bibTag : bibTags) {
 				JSONObject json = new JSONObject();
-				json.put("UID", bibTag.getUID());
-				json.put("MID", bibTag.getMID());
+				json.put("uid", bibTag.getUID());
+				json.put("mid", bibTag.getMID());
 				jsonArray.add(json);
 			}
 
 			// Setup return object
 			JSONObject returnObj = new JSONObject();
 			returnObj.put("tags", jsonArray);
-			returnObj.put("event", "tagsDetected");
-			send(returnObj.toJSONString());
+			returnObj.put("event", "rfid.tags.detected");
+			webSocket.send(returnObj.toJSONString());
 		}
 	}
 
-	public boolean isConnected() {
-		return this.connected;
+	@Override
+	public void tagAFISet(BibTag bibTag, Boolean success) {
+		if (webSocket.isConnected()) {
+			if (debug) {
+				System.out.println("Tag afi set " + (success ? "success" : "error") + ": " + bibTag);		
+			}
+			
+			JSONObject tag = new JSONObject();
+			tag.put("uid", bibTag.getUID());
+			tag.put("mid", bibTag.getMID());
+			tag.put("afi", bibTag.getAFI());
+
+			JSONObject json = new JSONObject();
+			json.put("tag", tag);
+			json.put("success", success);
+			json.put("event", "rfid.afi.set");
+
+			webSocket.send(json.toJSONString());
+		}		
+	}
+
+	@Override
+	public void webSocketMessage(String message) {
+		JSONParser parser = new JSONParser();
+
+		if (debug) {
+			System.out.println("WebSocket: message RECEIVED: " + message);
+		}
+
+		try {
+			JSONObject jsonMessage = (JSONObject) parser.parse(message);
+
+			// detectTags Event
+			if (jsonMessage.get("event").equals("detectTags")) {
+				tagReader.detectCurrentTags();
+			}
+			// setAFI Event
+			else if (jsonMessage.get("event").equals("setAFI")) {
+				try {
+					String afi = jsonMessage.get("afi").toString();
+					String uid = jsonMessage.get("uid").toString();
+
+					// Only set tag and 
+					if (!uid.equals("") && uid != null && !afi.equals("") && afi != null) {
+						tagReader.addEventSetTagAFI(uid, afi);
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
+				}
+			}
+		} catch (ParseException ex) {
+			ex.printStackTrace();
+			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+
+			if (webSocket.isConnected()) {
+				JSONObject callback = new JSONObject();
+				callback.put("event", "error");
+				callback.put("message", ex.getMessage());
+				webSocket.send(callback.toJSONString());
+			}			
+		}
 	}
 }

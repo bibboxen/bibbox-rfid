@@ -4,44 +4,44 @@ package rfid;
  * BibTag.
  */
 public class BibTag {
-	private String UID, MID;
-	private String AFI;
+	private String uid, mid;
+	private String afi;
 
 	/**
 	 * Constructor.
 	 * 
-	 * @param UID
-	 * @param MID
+	 * @param uid
+	 * @param mid
 	 */
-	public BibTag(String UID, String MID) {
-		this.UID = UID;
-		this.MID = MID;
+	public BibTag(String uid, String mid) {
+		this.uid = uid;
+		this.mid = mid;
 	}
 
 	public String getUID() {
-		return this.UID;
+		return this.uid;
 	}
 
 	public String getMID() {
-		return this.MID;
+		return this.mid;
 	}
 
-	public void setMID(String MID) {
-		this.MID = MID;
+	public void setMID(String mid) {
+		this.mid = mid;
 	}
 
 	public String getAFI() {
-		return this.AFI;
+		return this.afi;
 	}
 
-	public void setAFI(String AFI) {
-		this.AFI = AFI;
+	public void setAFI(String afi) {
+		this.afi = afi;
 	}
 
 	/**
 	 * To string.
 	 */
 	public String toString() {
-		return "{ UID: " + this.UID + " MID: " + this.MID + " }";
+		return "{ uid: " + this.uid + ", mid: " + this.mid + " }";
 	}
 }
