@@ -59,10 +59,8 @@ public class Driver {
 					}
 				}
 			}, 5000, 10000); // calls run every tenth second
-		} catch (URISyntaxException ex) {
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 		}
 	}
 
@@ -72,10 +70,10 @@ public class Driver {
 	 */
 
 	public static void createNewWebSocketInstance() {
+		System.out.println("createNewWebSocketInstance");
 		client.close();
 		client = null;
 		try {
-			System.out.println("Websocket client: TRYING TO CONNECT TO:  " + host + ":" + port);
 			logger.log("Websocket client trying to connect to " + host + ":" + port);
 			client = new ClientImpl(new URI("ws://" + host + ":" + port), new Draft_10(), logger, debug);
 			client.connect();

@@ -1,11 +1,5 @@
 package rfid;
 
-import de.feig.FeIscListener;
-import de.feig.FePortDriverException;
-import de.feig.FeReaderDriverException;
-import de.feig.FedmException;
-import de.feig.FedmIscReader;
-import de.feig.FedmIscReaderConst;
 import java.net.URI;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
@@ -50,6 +44,7 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 		
 		// Initialize TagReader.
 		tagReader = new FeigReader(logger, this, debug);
+		tagReader.startReading();
 	}
 
 	/**
@@ -76,7 +71,6 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 	@Override
 	public void onMessage(String message) {
 		JSONParser parser = new JSONParser();
-		JSONObject callback = new JSONObject();
 
 		logger.log("WebSocket: message RECEIVED: " + message);
 
@@ -102,15 +96,13 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 				}
 			}
-
-			send(callback.toJSONString());
 		} catch (ParseException ex) {
 			ex.printStackTrace();
 			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 
+			JSONObject callback = new JSONObject();
 			callback.put("event", "error");
 			callback.put("message", ex.getMessage());
-
 			send(callback.toJSONString());
 		}
 	}
@@ -125,12 +117,11 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 		// this method is called when connection to websocket server is closed.
 		logger.log("WebSocket: connection CLOSED");
 
-		/*if (fedm.isConnected()) {
-			closeConnection();
-		}*/
+		if (tagReader.isRunning()) {
+			tagReader.disconnect();
+		}
 
 		connected = false;
-		//tagReader.setRunning(false);
 	}
 
 	/**
@@ -140,12 +131,15 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 	public void onError(Exception ex) {
 		logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 
-		/*if (fedm.isConnected()) {
-			closeConnection();
-		}*/
+		if (tagReader.isRunning()) {
+			tagReader.disconnect();
+		}
 
 		connected = false;
-		//tagReader.setRunning(false);
+	}
+	
+	public boolean isConnected() {
+		return this.connected;
 	}
 
 	/**
@@ -155,6 +149,10 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 	 */
 	@Override
 	public void tagDetected(BibTag bibTag) {
+		if (debug) {
+			System.out.println("Tag detected: " + bibTag);		
+		}
+		
 		if (connected) {
 			JSONObject tag = new JSONObject();
 			tag.put("UID", bibTag.getUID());
@@ -175,6 +173,10 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 	 */
 	@Override
 	public void tagRemoved(BibTag bibTag) {
+		if (debug) {
+			System.out.println("Tag removed: " + bibTag);		
+		}
+		
 		if (connected) {
 			JSONObject tag = new JSONObject();
 			tag.put("UID", bibTag.getUID());
@@ -208,11 +210,6 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 			send(returnObj.toJSONString());
 		}
 	}
-
-	public boolean isConnected() {
-		return this.connected;
-	}
-
 
 	@Override
 	public void tagAFISetSuccess(BibTag bibTag) {

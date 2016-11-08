@@ -355,8 +355,6 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 	 */
 	public void run() {
 		while (running) {
-			String[] serialNumber;
-
 			try {
 				fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
 				fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, 0x00);
@@ -373,9 +371,6 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 
 				// Get number of entries in the ISO_TABLE.
 				int tableLength = fedm.getTableLength(FedmIscReaderConst.ISO_TABLE);
-				
-				// Initialize arrays.
-				String[] tags = new String[tableLength];
 
 				// Clear registered tags.
 				bibTags.clear();
@@ -383,6 +378,8 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 				// Register tags on device.
 				for (int i = 0; i < tableLength; i++) {
 					String UID = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR);
+					
+					System.out.println(UID);
 					
 					bibTags.add(new BibTag(UID, getMIDFromMultipleBlocks(UID)));
 				}
@@ -444,8 +441,6 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 						if (writeAFI(tag.getUID(), event.getAfi())) {
 							tag.setAFI(event.getAfi());
 							
-							// @TODO: Emit event.
-							
 							tagListener.tagAFISetSuccess(tag);
 						}
 						else {
@@ -470,18 +465,12 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 					System.out.println(currentTags.toString());
 				}
 
-				try {
-					Thread.sleep(0);
-				} catch (InterruptedException e) {
-					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
-				}
-			} catch (FedmException e) {
-				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
-			} catch (FePortDriverException e) {
-				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
-			} catch (FeReaderDriverException e) {
+				// Yield. 
+				Thread.sleep(50);
+			} catch (Exception e) {
 				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 			}
+			System.out.println("Running");
 		}
 	}
 
@@ -492,6 +481,8 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 		}
 		
 		if (!running) {
+			System.out.println("Start");
+			running = true;
 			this.start();
 		}
 	}
@@ -505,7 +496,6 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 	public Boolean connect() {
 		// Initialize FEIG Reader.
 		if (!initiateFeigReader()) {
-			// @TODO: Emit error.
 			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
 			running = false;
 			return false;
