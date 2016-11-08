@@ -56,6 +56,10 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 			tagReader.startReading();
 		}
 	}
+	
+	public Boolean webSocketIsConnected() {
+		return webSocket != null && webSocket.isConnected();
+	}
 
 	/**
 	 * Open a new WebSocket connection.
@@ -76,7 +80,7 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 			System.out.println("Tag detected: " + bibTag);		
 		}
 		
-		if (webSocket.isConnected()) {
+		if (webSocketIsConnected()) {
 			JSONObject tag = new JSONObject();
 			tag.put("uid", bibTag.getUID());
 			tag.put("mid", bibTag.getMID());
@@ -100,7 +104,7 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 			System.out.println("Tag removed: " + bibTag);		
 		}
 		
-		if (webSocket.isConnected()) {
+		if (webSocketIsConnected()) {
 			JSONObject tag = new JSONObject();
 			tag.put("uid", bibTag.getUID());
 			tag.put("mid", bibTag.getMID());
@@ -115,7 +119,7 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 
 	@Override
 	public void tagsDetected(ArrayList<BibTag> bibTags) {
-		if (webSocket.isConnected()) {
+		if (webSocketIsConnected()) {
 			JSONArray jsonArray = new JSONArray();
 
 			// Add bibTags
@@ -136,7 +140,7 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 
 	@Override
 	public void tagAFISet(BibTag bibTag, Boolean success) {
-		if (webSocket.isConnected()) {
+		if (webSocketIsConnected()) {
 			if (debug) {
 				System.out.println("Tag afi set " + (success ? "success" : "error") + ": " + bibTag);		
 			}
@@ -189,7 +193,7 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 			ex.printStackTrace();
 			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
 
-			if (webSocket.isConnected()) {
+			if (webSocketIsConnected()) {
 				JSONObject callback = new JSONObject();
 				callback.put("event", "error");
 				callback.put("message", ex.getMessage());
