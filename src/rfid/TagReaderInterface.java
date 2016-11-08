@@ -7,7 +7,7 @@ public interface TagReaderInterface {
 	
 	public Boolean connect();
 	
-	public Boolean disconnect();
+	public Boolean closeConnection();
 	
 	public Boolean isRunning();
 	
