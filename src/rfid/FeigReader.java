@@ -336,17 +336,13 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 * @param afi
 	 */
 	public Boolean writeAFI(String id, String afi) {
-		// This method can be called whenever you
-		// want to write the AFI on a tag.
-		byte byteAfi = (byte) 0x07;
-		if (afi.equals("194")) {
-			byteAfi = (byte) 0xC2;
-		} else if (afi.equals("7") || afi.equals("07")) {
-			byteAfi = (byte) 0x07;
-		}
-		
+		// Create byte for AFI.
+		int dec = Integer.parseInt(afi);
+		String afiHex = Integer.toHexString(dec);
+		byte byteAfi = (byte) (Integer.parseInt(afiHex, 16) & 0xff);
+
 		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
-		
+
 		try {
 			int idx = fedm.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
 			if (idx < 0) {
