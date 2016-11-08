@@ -25,12 +25,10 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 	private Boolean debug;
 	private URI serverUri;
 
+	
 	/**
 	 * Constructor.
-	 * 
-	 * @TODO: Move WebSocket implementation into separate class.
-	 * @TODO: Move FEIG implementation into separate class.
-	 * 
+	 *
 	 * @param serverUri
 	 * @param draft
 	 * @param logger
