@@ -25,4 +25,8 @@ public class EventSetAFI {
 	public void setAfi(String afi) {
 		this.afi = afi;
 	}
+	
+	public String toString() {
+		return "{uid:" + uid + ", afi:" + afi + "}";
+	}
 }

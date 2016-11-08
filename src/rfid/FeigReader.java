@@ -351,37 +351,55 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 	}
 
 	/**
+	 * Get UIDs of the tags on the device.
+	 * 
+	 * @return
+	 * @throws FedmException
+	 * @throws FePortDriverException
+	 * @throws FeReaderDriverException
+	 */
+	public String[] getUIDs() throws FedmException, FePortDriverException, FeReaderDriverException {
+		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
+		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, 0x00);
+		fedm.deleteTable(FedmIscReaderConst.ISO_TABLE);
+
+		fedm.sendProtocol((byte) 0x69); // RFReset
+		fedm.sendProtocol((byte) 0xB0); // ISOCmd
+
+		// @TODO - Review: Possibility of infinite loop?
+		while (fedm.getLastStatus() == 0x94) { // more flag set?
+			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_MORE, 0x01);
+			fedm.sendProtocol((byte) 0xB0);
+		}
+
+		// Get number of entries in the ISO_TABLE.
+		int tableLength = fedm.getTableLength(FedmIscReaderConst.ISO_TABLE);
+		
+		String[] uids = new String[tableLength];
+		
+		// Register tags on device.
+		for (int i = 0; i < tableLength; i++) {
+			String UID = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR);
+			uids[i] = UID;
+		}
+		
+		return uids;
+	}
+	
+	/**
 	 * Start the thread.
 	 */
 	public void run() {
 		while (running) {
 			try {
-				fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
-				fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, 0x00);
-				fedm.deleteTable(FedmIscReaderConst.ISO_TABLE);
-
-				fedm.sendProtocol((byte) 0x69); // RFReset
-				fedm.sendProtocol((byte) 0xB0); // ISOCmd
-
-				// @TODO - Review: Possibility of infinite loop?
-				while (fedm.getLastStatus() == 0x94) { // more flag set?
-					fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_MORE, 0x01);
-					fedm.sendProtocol((byte) 0xB0);
-				}
-
-				// Get number of entries in the ISO_TABLE.
-				int tableLength = fedm.getTableLength(FedmIscReaderConst.ISO_TABLE);
+				String[] uids = getUIDs();
 
 				// Clear registered tags.
 				bibTags.clear();
 								
 				// Register tags on device.
-				for (int i = 0; i < tableLength; i++) {
-					String UID = fedm.getStringTableData(i, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR);
-					
-					System.out.println(UID);
-					
-					bibTags.add(new BibTag(UID, getMIDFromMultipleBlocks(UID)));
+				for (int i = 0; i < uids.length; i++) {
+					bibTags.add(new BibTag(uids[i], getMIDFromMultipleBlocks(uids[i])));
 				}
 				
 				// Compare current tags with tags detected.
@@ -441,16 +459,16 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 						if (writeAFI(tag.getUID(), event.getAfi())) {
 							tag.setAFI(event.getAfi());
 							
-							tagListener.tagAFISetSuccess(tag);
+							tagListener.tagAFISet(tag, true);
 						}
 						else {
-							tagListener.tagAFISetFailure(tag);
+							tagListener.tagAFISet(tag, false);
 						}
 					} 
 					else {
 						logger.log("UID: " + event.getUid() + ", could not be found on reader");
 
-						tagListener.tagAFISetFailure(tag);
+						tagListener.tagAFISet(tag, false);
 					}
 				}
 				
@@ -470,7 +488,6 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 			} catch (Exception e) {
 				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 			}
-			System.out.println("Running");
 		}
 	}
 

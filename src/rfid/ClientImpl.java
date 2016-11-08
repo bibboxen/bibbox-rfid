@@ -84,8 +84,8 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 			// setAFI Event
 			else if (jsonMessage.get("event").equals("setAFI")) {
 				try {
-					String afi = jsonMessage.get("AFI").toString();
-					String uid = jsonMessage.get("UID").toString();
+					String afi = jsonMessage.get("afi").toString();
+					String uid = jsonMessage.get("uid").toString();
 
 					// Only set tag and 
 					if (!uid.equals("") && uid != null && !afi.equals("") && afi != null) {
@@ -155,12 +155,12 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 		
 		if (connected) {
 			JSONObject tag = new JSONObject();
-			tag.put("UID", bibTag.getUID());
-			tag.put("MID", bibTag.getMID());
+			tag.put("uid", bibTag.getUID());
+			tag.put("mid", bibTag.getMID());
 
 			JSONObject json = new JSONObject();
 			json.put("tag", tag);
-			json.put("event", "tagDetected");
+			json.put("event", "rfid.tag.detected");
 
 			send(json.toJSONString());
 		}
@@ -179,12 +179,12 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 		
 		if (connected) {
 			JSONObject tag = new JSONObject();
-			tag.put("UID", bibTag.getUID());
-			tag.put("MID", bibTag.getMID());
+			tag.put("uid", bibTag.getUID());
+			tag.put("mid", bibTag.getMID());
 
 			JSONObject json = new JSONObject();
 			json.put("tag", tag);
-			json.put("event", "tagRemoved");
+			json.put("event", "rfid.tag.removed");
 
 			send(json.toJSONString());
 		}
@@ -198,29 +198,37 @@ public class ClientImpl extends WebSocketClient implements TagListenerInterface 
 			// Add bibTags
 			for (BibTag bibTag : bibTags) {
 				JSONObject json = new JSONObject();
-				json.put("UID", bibTag.getUID());
-				json.put("MID", bibTag.getMID());
+				json.put("uid", bibTag.getUID());
+				json.put("mid", bibTag.getMID());
 				jsonArray.add(json);
 			}
 
 			// Setup return object
 			JSONObject returnObj = new JSONObject();
 			returnObj.put("tags", jsonArray);
-			returnObj.put("event", "tagsDetected");
+			returnObj.put("event", "rfid.tags.detected");
 			send(returnObj.toJSONString());
 		}
 	}
 
 	@Override
-	public void tagAFISetSuccess(BibTag bibTag) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void tagAFISet(BibTag bibTag, Boolean success) {
+		if (connected) {
+			if (debug) {
+				System.out.println("Tag afi set " + (success ? "success" : "error") + ": " + bibTag);		
+			}
+			
+			JSONObject tag = new JSONObject();
+			tag.put("uid", bibTag.getUID());
+			tag.put("mid", bibTag.getMID());
+			tag.put("afi", bibTag.getAFI());
 
+			JSONObject json = new JSONObject();
+			json.put("tag", tag);
+			json.put("success", success);
+			json.put("event", "rfid.afi.set");
 
-	@Override
-	public void tagAFISetFailure(BibTag bibTag) {
-		// TODO Auto-generated method stub
-		
+			send(json.toJSONString());
+		}		
 	}
 }

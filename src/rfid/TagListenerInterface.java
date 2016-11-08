@@ -32,12 +32,5 @@ public interface TagListenerInterface {
 	 * 
 	 * @param bibTag
 	 */
-	public void tagAFISetSuccess(BibTag bibTag);
-	
-	/**
-	 * An error occurred when writing tag's AFI.
-	 * 
-	 * @param bibTag
-	 */
-	public void tagAFISetFailure(BibTag bibTag);
+	public void tagAFISet(BibTag bibTag, Boolean success);
 }
