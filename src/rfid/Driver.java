@@ -3,10 +3,8 @@ package rfid;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Timer;
 import java.util.TimerTask;
-import org.java_websocket.drafts.Draft_10;
 
 /**
  * Driver.

@@ -1,22 +1,14 @@
 package rfid;
 
 import java.net.URI;
-
 import org.java_websocket.drafts.Draft_10;
 import java.util.ArrayList;
-
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import com.google.gson.Gson;
 
 /**
  * Client.
  * 
  * Handles communication with FEIG reader and WebSocket.
- * 
- * @TODO: Replace org.json.simple.JSON* with GSON:
- *        https://github.com/google/gson to avoid type warnings.
  */
 public class ClientImpl implements TagListenerInterface, WebSocketListener {
 	private TagReaderInterface tagReader;
@@ -24,8 +16,8 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 	private LoggerImpl logger;
 	private Boolean debug;
 	private URI serverUri;
+	private Gson gson;
 
-	
 	/**
 	 * Constructor.
 	 *
@@ -40,6 +32,8 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 		
 		// Initialize TagReader.		
 		tagReader = new FeigReader(logger, this, debug);
+
+		this.gson = new Gson();
 	}
 	
 	/**
@@ -56,9 +50,28 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 			tagReader.startReading();
 		}
 	}
-	
+
+	/**
+	 * Is the WebSocket connected?
+	 * 
+	 * @return
+	 */
 	public Boolean webSocketIsConnected() {
 		return webSocket != null && webSocket.isConnected();
+	}
+
+	/**
+	 * Send a message through the WebSocket.
+	 * 
+	 * Serializes the message to JSON and sends it if the socket is connected.
+	 * 
+	 * @param msg
+	 *   The message to send.
+	 */
+	public void sendMessage(WebSocketMessage msg) {
+		if (webSocketIsConnected()) {
+			webSocket.send(gson.toJson(msg));
+		}
 	}
 
 	/**
@@ -80,17 +93,11 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 			System.out.println("Tag detected: " + bibTag);		
 		}
 		
-		if (webSocketIsConnected()) {
-			JSONObject tag = new JSONObject();
-			tag.put("uid", bibTag.getUID());
-			tag.put("mid", bibTag.getMID());
+		WebSocketMessage resp = new WebSocketMessage();
+		resp.setTag(bibTag);
+		resp.setEvent("rfid.tag.detected");
 
-			JSONObject json = new JSONObject();
-			json.put("tag", tag);
-			json.put("event", "rfid.tag.detected");
-
-			webSocket.send(json.toJSONString());
-		}
+		sendMessage(resp);
 	}
 
 	/**
@@ -104,101 +111,66 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 			System.out.println("Tag removed: " + bibTag);		
 		}
 		
-		if (webSocketIsConnected()) {
-			JSONObject tag = new JSONObject();
-			tag.put("uid", bibTag.getUID());
-			tag.put("mid", bibTag.getMID());
+		WebSocketMessage resp = new WebSocketMessage();
+		resp.setTag(bibTag);
+		resp.setEvent("rfid.tag.removed");
 
-			JSONObject json = new JSONObject();
-			json.put("tag", tag);
-			json.put("event", "rfid.tag.removed");
-
-			webSocket.send(json.toJSONString());
-		}
+		sendMessage(resp);
 	}
 
 	@Override
 	public void tagsDetected(ArrayList<BibTag> bibTags) {
-		if (webSocketIsConnected()) {
-			JSONArray jsonArray = new JSONArray();
+		WebSocketMessage resp = new WebSocketMessage();
+		resp.setTags(bibTags);
+		resp.setEvent("rfid.tags.detected");
 
-			// Add bibTags
-			for (BibTag bibTag : bibTags) {
-				JSONObject json = new JSONObject();
-				json.put("uid", bibTag.getUID());
-				json.put("mid", bibTag.getMID());
-				jsonArray.add(json);
-			}
-
-			// Setup return object
-			JSONObject returnObj = new JSONObject();
-			returnObj.put("tags", jsonArray);
-			returnObj.put("event", "rfid.tags.detected");
-			webSocket.send(returnObj.toJSONString());
-		}
+		sendMessage(resp);
 	}
 
 	@Override
 	public void tagAFISet(BibTag bibTag, Boolean success) {
-		if (webSocketIsConnected()) {
-			if (debug) {
-				System.out.println("Tag afi set " + (success ? "success" : "error") + ": " + bibTag);		
-			}
-			
-			JSONObject tag = new JSONObject();
-			tag.put("uid", bibTag.getUID());
-			tag.put("mid", bibTag.getMID());
-			tag.put("afi", bibTag.getAFI());
-
-			JSONObject json = new JSONObject();
-			json.put("tag", tag);
-			json.put("success", success);
-			json.put("event", "rfid.afi.set");
-
-			webSocket.send(json.toJSONString());
-		}		
+		if (debug) {
+			System.out.println("Tag afi set " + (success ? "success" : "error") + ": " + bibTag);		
+		}
+		
+		WebSocketMessage resp = new WebSocketMessage();
+		resp.setTag(bibTag);
+		resp.setSuccess(success);
+		resp.setEvent("rfid.afi.set");
+		
+		sendMessage(resp);
 	}
 
 	@Override
 	public void webSocketMessage(String message) {
-		JSONParser parser = new JSONParser();
-
 		if (debug) {
 			System.out.println("WebSocket: message RECEIVED: " + message);
 		}
 
-		try {
-			JSONObject jsonMessage = (JSONObject) parser.parse(message);
+		WebSocketMessage msg = gson.fromJson(message, WebSocketMessage.class);
 
-			// detectTags Event
-			if (jsonMessage.get("event").equals("detectTags")) {
-				tagReader.detectCurrentTags();
-			}
-			// setAFI Event
-			else if (jsonMessage.get("event").equals("setAFI")) {
-				try {
-					String afi = jsonMessage.get("afi").toString();
-					String uid = jsonMessage.get("uid").toString();
+		// detectTags Event
+		if (msg.getEvent().equals("detectTags")) {
+			tagReader.detectCurrentTags();
+		}
+		// setAFI Event
+		else if (msg.getEvent().equals("setAFI")) {
+			try {
+				String afi = msg.getTag().getAFI();
+				String uid = msg.getTag().getUID();
 
-					// Only set tag and 
-					if (!uid.equals("") && uid != null && !afi.equals("") && afi != null) {
-						tagReader.addEventSetTagAFI(uid, afi);
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-					logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
+				if (afi != null && uid != null && !afi.equals("") && !uid.equals("")) {
+					tagReader.addEventSetTagAFI(uid, afi);
 				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
+				
+				WebSocketMessage resp = new WebSocketMessage();
+				resp.setEvent("rfid.error");
+				resp.setMessage(e.getMessage());
+				sendMessage(resp);
 			}
-		} catch (ParseException ex) {
-			ex.printStackTrace();
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
-
-			if (webSocketIsConnected()) {
-				JSONObject callback = new JSONObject();
-				callback.put("event", "error");
-				callback.put("message", ex.getMessage());
-				webSocket.send(callback.toJSONString());
-			}			
 		}
 	}
 }

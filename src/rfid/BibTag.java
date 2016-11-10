@@ -4,18 +4,25 @@ package rfid;
  * BibTag.
  */
 public class BibTag {
-	private String uid, mid;
-	private String afi;
+	private String uid, mid, afi;
+	private int seriesLength, numberInSeries;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param uid
 	 * @param mid
+	 * @param afi
+	 * @param seriesLength
+	 * @param numberInSeries
 	 */
-	public BibTag(String uid, String mid) {
+	public BibTag(String uid, String mid, String afi, int seriesLength, int numberInSeries) {
+		super();
 		this.uid = uid;
 		this.mid = mid;
+		this.afi = afi;
+		this.seriesLength = seriesLength;
+		this.numberInSeries = numberInSeries;
 	}
 
 	public String getUID() {
@@ -38,10 +45,26 @@ public class BibTag {
 		this.afi = afi;
 	}
 
+	public int getSeriesLength() {
+		return seriesLength;
+	}
+
+	public void setSeriesLength(int seriesLength) {
+		this.seriesLength = seriesLength;
+	}
+
+	public int getNumberInSeries() {
+		return numberInSeries;
+	}
+
+	public void setNumberInSeries(int numberInSeries) {
+		this.numberInSeries = numberInSeries;
+	}
+
 	/**
 	 * To string.
 	 */
 	public String toString() {
-		return "{ uid: " + this.uid + ", mid: " + this.mid + " }";
+		return "{ uid: " + this.uid + ", mid: " + this.mid + " ( " + numberInSeries  + "/" + seriesLength + ") }";
 	}
 }
