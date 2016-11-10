@@ -1,16 +1,17 @@
-package rfid;
+package middleware;
 
 import java.net.URI;
 import org.java_websocket.drafts.Draft_10;
 import java.util.ArrayList;
 import com.google.gson.Gson;
+import readers.FeigReader;
 
 /**
  * Client.
  * 
  * Handles communication with FEIG reader and WebSocket.
  */
-public class ClientImpl implements TagListenerInterface, WebSocketListener {
+public class Client implements TagListenerInterface, WebSocketListener {
 	private TagReaderInterface tagReader;
 	private WebSocketImpl webSocket;
 	private LoggerImpl logger;
@@ -21,19 +22,27 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 	/**
 	 * Constructor.
 	 *
+	 * @param reader
+	 *   The name of the tag reader to initialize. Defaults to "feigReader".
 	 * @param serverUri
-	 * @param draft
+	 *   The WebSocket URI.
 	 * @param logger
+	 *   The logger.
+	 * @param debug
+	 *   Should debugging output be enabled?
 	 */
-	public ClientImpl(URI serverUri, LoggerImpl logger, Boolean debug) {
+	public Client(String reader, URI serverUri, LoggerImpl logger, Boolean debug) {
+		this.gson = new Gson();
 		this.logger = logger;
 		this.debug = debug;
 		this.serverUri = serverUri;
-		
-		// Initialize TagReader.		
-		tagReader = new FeigReader(logger, this, debug);
 
-		this.gson = new Gson();
+		// Initialize TagReader.
+		switch (reader) {
+			case "feig":
+			default:
+				tagReader = new FeigReader(logger, this, debug);
+		}
 	}
 	
 	/**
@@ -85,7 +94,7 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 	/**
 	 * Tag has been detected (TagListenerInterface).
 	 * 
-	 * Emit event to server.
+	 * Emit event through WebSocket.
 	 */
 	@Override
 	public void tagDetected(BibTag bibTag) {
@@ -103,7 +112,7 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 	/**
 	 * Tag has been removed (TagListenerInterface).
 	 * 
-	 * Emit event to server.
+	 * Emit event through WebSocket.
 	 */
 	@Override
 	public void tagRemoved(BibTag bibTag) {
@@ -118,6 +127,11 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 		sendMessage(resp);
 	}
 
+	/**
+	 * Tags have been detected (TagListenerInterface).
+	 * 
+	 * Emit event through WebSocket.
+	 */
 	@Override
 	public void tagsDetected(ArrayList<BibTag> bibTags) {
 		WebSocketMessage resp = new WebSocketMessage();
@@ -127,6 +141,11 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 		sendMessage(resp);
 	}
 
+	/**
+	 * Tag AFI has been attempted to be set (TagListenerInterface).
+	 * 
+	 * Emit event through WebSocket.
+	 */
 	@Override
 	public void tagAFISet(BibTag bibTag, Boolean success) {
 		if (debug) {
@@ -141,6 +160,9 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 		sendMessage(resp);
 	}
 
+	/**
+	 * Message has been received through WebSocket (TagListenerInterface).
+	 */
 	@Override
 	public void webSocketMessage(String message) {
 		if (debug) {
@@ -155,21 +177,11 @@ public class ClientImpl implements TagListenerInterface, WebSocketListener {
 		}
 		// setAFI Event
 		else if (msg.getEvent().equals("setAFI")) {
-			try {
-				String afi = msg.getTag().getAFI();
-				String uid = msg.getTag().getUID();
+			String afi = msg.getTag().getAFI();
+			String uid = msg.getTag().getUID();
 
-				if (afi != null && uid != null && !afi.equals("") && !uid.equals("")) {
-					tagReader.addEventSetTagAFI(uid, afi);
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
-				
-				WebSocketMessage resp = new WebSocketMessage();
-				resp.setEvent("rfid.error");
-				resp.setMessage(e.getMessage());
-				sendMessage(resp);
+			if (afi != null && uid != null && !afi.equals("") && !uid.equals("")) {
+				tagReader.addEventSetTagAFI(uid, afi);
 			}
 		}
 	}

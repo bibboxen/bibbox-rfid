@@ -1,4 +1,4 @@
-package rfid;
+package middleware;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,8 +16,9 @@ public class Driver {
 	private static String host;
 	private static Integer port;
 	private static Boolean debug;
+	private static String reader;
 	private static LoggerImpl logger;
-	private static ClientImpl client;
+	private static Client client;
 
 	/**
 	 * Main entry point.
@@ -37,11 +38,12 @@ public class Driver {
 			port = 3001;
 			host = "localhost";
 			debug = false;
+			reader = "feig";
 		}
 
 		// Start client.
 		try {
-			client = new ClientImpl(new URI("ws://" + host + ":" + port), logger, debug);
+			client = new Client(reader, new URI("ws://" + host + ":" + port), logger, debug);
 
 			// Make sure the Client is connected every 10 s. 
 			Timer t = new Timer();
@@ -67,10 +69,11 @@ public class Driver {
 			host = properties.getHostProperty();
 			port = properties.getPortProperty();
 			debug = properties.getDebugProperty();
+			
 			return true;
-
 		} catch (IOException ex) {
 			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+			
 			return false;
 		}
 	}

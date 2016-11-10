@@ -1,4 +1,4 @@
-package rfid;
+package middleware;
 
 public class EventSetAFI {
 	private String uid;
