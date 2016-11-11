@@ -1,4 +1,4 @@
-package rfid;
+package middleware;
 
 import java.net.URI;
 

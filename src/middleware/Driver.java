@@ -1,12 +1,10 @@
-package rfid;
+package middleware;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Timer;
 import java.util.TimerTask;
-import org.java_websocket.drafts.Draft_10;
 
 /**
  * Driver.
@@ -18,8 +16,9 @@ public class Driver {
 	private static String host;
 	private static Integer port;
 	private static Boolean debug;
+	private static String reader;
 	private static LoggerImpl logger;
-	private static ClientImpl client;
+	private static Client client;
 
 	/**
 	 * Main entry point.
@@ -39,11 +38,12 @@ public class Driver {
 			port = 3001;
 			host = "localhost";
 			debug = false;
+			reader = "feig";
 		}
 
 		// Start client.
 		try {
-			client = new ClientImpl(new URI("ws://" + host + ":" + port), logger, debug);
+			client = new Client(reader, new URI("ws://" + host + ":" + port), logger, debug);
 
 			// Make sure the Client is connected every 10 s. 
 			Timer t = new Timer();
@@ -54,6 +54,7 @@ public class Driver {
 				}
 			}, 5000, 10000);
 		} catch (Exception e) {
+			e.printStackTrace();
 			logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 		}
 	}
@@ -69,10 +70,13 @@ public class Driver {
 			host = properties.getHostProperty();
 			port = properties.getPortProperty();
 			debug = properties.getDebugProperty();
+			reader = properties.getReaderProperty();
+			
 			return true;
-
-		} catch (IOException ex) {
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+			logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
+			
 			return false;
 		}
 	}

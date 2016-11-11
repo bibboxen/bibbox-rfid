@@ -18,7 +18,7 @@
  * the FEIG Licensing Agreement, which can be found in the OBID folder.
  */
 
-package rfid;
+package readers;
 
 import java.util.ArrayList;
 
@@ -29,6 +29,10 @@ import de.feig.FedmException;
 import de.feig.FedmIscReader;
 import de.feig.FedmIscReaderConst;
 import de.feig.FedmIscReaderID;
+import middleware.AbstractTagReader;
+import middleware.BibTag;
+import middleware.LoggerImpl;
+import middleware.TagListenerInterface;
 
 public class FeigReader extends AbstractTagReader implements FeIscListener {
 	private FedmIscReader fedm;
@@ -430,7 +434,20 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 			// Register tags on device.
 			for (int i = 0; i < uids.length; i++) {
-				tags.add(new BibTag(uids[i], getMIDFromMultipleBlocks(uids[i])));
+				String mid = getMIDFromMultipleBlocks(uids[i]);
+
+				// Make sure the tag has been read correctly.
+				if (mid.length() == 16) {
+					tags.add(
+						new BibTag(
+							uids[i],
+							mid.substring(6),
+							null,
+							Integer.parseInt(mid.substring(2, 4)),
+							Integer.parseInt(mid.substring(4, 6))
+						)
+					);
+				}
 			}
 			
 			return tags;

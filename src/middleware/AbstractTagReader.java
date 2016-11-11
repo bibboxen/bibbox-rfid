@@ -1,7 +1,16 @@
-package rfid;
+package middleware;
 
 import java.util.ArrayList;
 
+/**
+ * AbstractTagReader.
+ * 
+ * Supplies basic logic for a TagReader, with a Thread run-method that reads/writes tags according
+ * to which state it is in.
+ * 
+ * This class should be extended for a new TagReader, and at least the abstract methods
+ * need to be overridden.
+ */
 public abstract class AbstractTagReader extends Thread implements TagReaderInterface {
 	protected Boolean connected = false;
 	protected Boolean running = false;

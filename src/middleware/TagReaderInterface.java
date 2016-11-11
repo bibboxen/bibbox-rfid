@@ -1,4 +1,4 @@
-package rfid;
+package middleware;
 
 public interface TagReaderInterface {
 	public void startReading();
