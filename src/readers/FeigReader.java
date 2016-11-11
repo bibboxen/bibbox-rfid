@@ -123,6 +123,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			return true;
 		}
 		catch (Exception e) {
+			e.printStackTrace();
 			logger.log("FeigReader closeConnection error: " + e.getMessage() + " --- " + e.toString());
 			
 			return false;
@@ -418,6 +419,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			}
 			catch (Exception e) {
 				logger.log("USB Connection Error: " + e.getMessage());
+				running = false;
 				return false;
 			}
 		}
@@ -453,6 +455,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			return tags;
 		}
 		catch (Exception e) {
+			e.printStackTrace();
 			return null;
 		}
 	}

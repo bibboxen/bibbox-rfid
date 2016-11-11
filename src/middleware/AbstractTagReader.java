@@ -68,7 +68,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 			connect();
 		}
 		
-		if (!running) {
+		if (connected && !running) {
 			System.out.println("Start");
 			running = true;
 			this.start();
@@ -191,6 +191,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				// Yield. 
 				Thread.sleep(50);
 			} catch (Exception e) {
+				e.printStackTrace();
 				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 			}
 		}
