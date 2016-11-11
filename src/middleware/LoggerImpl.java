@@ -1,4 +1,4 @@
-package rfid;
+package middleware;
 
 import java.io.IOException;
 import java.util.logging.FileHandler;

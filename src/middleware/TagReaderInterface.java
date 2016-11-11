@@ -1,4 +1,4 @@
-package rfid;
+package middleware;
 
 public interface TagReaderInterface {
 	public void startReading();
@@ -7,7 +7,7 @@ public interface TagReaderInterface {
 	
 	public Boolean connect();
 	
-	public Boolean disconnect();
+	public Boolean closeConnection();
 	
 	public Boolean isRunning();
 	

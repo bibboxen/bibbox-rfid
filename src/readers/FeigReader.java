@@ -1,4 +1,24 @@
-package rfid;
+/* 
+ * Copyright (C) 2016 ID-advice
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * You can redistribute this software and/or modify it under the terms of 
+ * the FEIG Licensing Agreement, which can be found in the OBID folder.
+ */
+
+package readers;
 
 import java.util.ArrayList;
 
@@ -9,20 +29,13 @@ import de.feig.FedmException;
 import de.feig.FedmIscReader;
 import de.feig.FedmIscReaderConst;
 import de.feig.FedmIscReaderID;
+import middleware.AbstractTagReader;
+import middleware.BibTag;
+import middleware.LoggerImpl;
+import middleware.TagListenerInterface;
 
-public class FeigReader extends Thread implements FeIscListener, TagReaderInterface {
+public class FeigReader extends AbstractTagReader implements FeIscListener {
 	private FedmIscReader fedm;
-
-	private LoggerImpl logger;
-	private TagListenerInterface tagListener;
-	private Boolean debug;
-
-	private Boolean connected = false;
-	private Boolean running = false;
-	private Boolean detectCurrentTags = false;
-	private ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
-	private ArrayList<BibTag> currentTags = new ArrayList<BibTag>();
-	private ArrayList<EventSetAFI> eventsSetAFI = new ArrayList<EventSetAFI>();
 
 	/**
 	 * Constructor.
@@ -99,12 +112,20 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 	 * @throws FeReaderDriverException 
 	 * @throws FePortDriverException 
 	 */
-	private void closeConnection() throws FedmException, FePortDriverException, FeReaderDriverException {
-		// Close connection if there is any.
-		if (fedm.isConnected()) {
-			fedm.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
-			fedm.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
-			fedm.disConnect();
+	public Boolean closeConnection() {
+		try {
+			// Close connection if there is any.
+			if (fedm.isConnected()) {
+				fedm.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
+				fedm.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
+				fedm.disConnect();
+			}
+			return true;
+		}
+		catch (Exception e) {
+			logger.log("FeigReader closeConnection error: " + e.getMessage() + " --- " + e.toString());
+			
+			return false;
 		}
 	}
 	
@@ -311,6 +332,7 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 		writeSpecificBlock(mid2Ascii.get(9) + "000000", id, (byte) 3);
 	}
 
+	@Override
 	/**
 	 * Write AFI.
 	 * 
@@ -318,17 +340,13 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 	 * @param afi
 	 */
 	public Boolean writeAFI(String id, String afi) {
-		// This method can be called whenever you
-		// want to write the AFI on a tag.
-		byte byteAfi = (byte) 0x07;
-		if (afi.equals("194")) {
-			byteAfi = (byte) 0xC2;
-		} else if (afi.equals("7") || afi.equals("07")) {
-			byteAfi = (byte) 0x07;
-		}
-		
+		// Create byte for AFI.
+		int dec = Integer.parseInt(afi);
+		String afiHex = Integer.toHexString(dec);
+		byte byteAfi = (byte) (Integer.parseInt(afiHex, 16) & 0xff);
+
 		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
-		
+
 		try {
 			int idx = fedm.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
 			if (idx < 0) {
@@ -386,129 +404,6 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 		return uids;
 	}
 	
-	/**
-	 * Start the thread.
-	 */
-	public void run() {
-		while (running) {
-			try {
-				String[] uids = getUIDs();
-
-				// Clear registered tags.
-				bibTags.clear();
-								
-				// Register tags on device.
-				for (int i = 0; i < uids.length; i++) {
-					bibTags.add(new BibTag(uids[i], getMIDFromMultipleBlocks(uids[i])));
-				}
-				
-				// Compare current tags with tags detected.
-				// Emit events if changes.
-				for (int i = 0; i < bibTags.size(); i++) {
-					Boolean contains = false;
-					for (int j = 0; j < currentTags.size(); j++) {
-						if (bibTags.get(i).getMID().equals(currentTags.get(j).getMID()) && 
-							bibTags.get(i).getUID().equals(currentTags.get(j).getUID())) {
-							contains = true;
-							break;
-						}
-					}
-					if (!contains) {
-						tagListener.tagDetected(bibTags.get(i));
-					}
-				}
-				for (int i = 0; i < currentTags.size(); i++) {
-					Boolean contains = false;
-					for (int j = 0; j < bibTags.size(); j++) {
-						if (currentTags.get(i).getMID().equals(bibTags.get(j).getMID()) &&
-							currentTags.get(i).getUID().equals(bibTags.get(j).getUID())) {
-							contains = true;
-							break;
-						}
-					}
-					if (!contains) {
-						tagListener.tagRemoved(currentTags.get(i));
-					}
-				}
-				
-				// Updated current tags.
-				currentTags = new ArrayList<BibTag>(bibTags);
-
-				// Process EventSetAFI events.
-				ArrayList<EventSetAFI> events = new ArrayList<EventSetAFI>(eventsSetAFI);
-				eventsSetAFI.clear();
-				
-				for (EventSetAFI event : events) {
-					BibTag tag = null;
-					
-					// Get tag.
-					for (BibTag b : bibTags) {
-						if (b.getUID().equals(event.getUid())) {
-							tag = b;
-							
-							break;
-						}
-					}
-					
-					if (tag != null) {
-						// DEBUG
-						if (debug) {
-							System.out.println("Writing: " + event.toString());
-						}
-
-						if (writeAFI(tag.getUID(), event.getAfi())) {
-							tag.setAFI(event.getAfi());
-							
-							tagListener.tagAFISet(tag, true);
-						}
-						else {
-							tagListener.tagAFISet(tag, false);
-						}
-					} 
-					else {
-						logger.log("UID: " + event.getUid() + ", could not be found on reader");
-
-						tagListener.tagAFISet(tag, false);
-					}
-				}
-				
-				// If requested current tags.
-				if (detectCurrentTags) {
-					tagListener.tagsDetected(currentTags);
-					detectCurrentTags = false;
-				}
-				
-				// DEBUG
-				if (debug) {
-					System.out.println(currentTags.toString());
-				}
-
-				// Yield. 
-				Thread.sleep(50);
-			} catch (Exception e) {
-				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
-			}
-		}
-	}
-
-	@Override
-	public void startReading() {
-		if (!connected) {
-			connect();
-		}
-		
-		if (!running) {
-			System.out.println("Start");
-			running = true;
-			this.start();
-		}
-	}
-
-	@Override
-	public void stopReading() {
-		this.running = false;
-	}
-
 	@Override
 	public Boolean connect() {
 		// Initialize FEIG Reader.
@@ -530,33 +425,35 @@ public class FeigReader extends Thread implements FeIscListener, TagReaderInterf
 	}
 
 	@Override
-	public Boolean disconnect() {
+	protected ArrayList<BibTag> getTags() {
 		try {
-			closeConnection();
-			running = false;
-		} catch (Exception e) {
-			logger.log(e.getMessage());
-			return false;
+			String[] uids = getUIDs();
+			
+			// Clear registered tags.
+			ArrayList<BibTag> tags = new ArrayList<BibTag>();
+
+			// Register tags on device.
+			for (int i = 0; i < uids.length; i++) {
+				String mid = getMIDFromMultipleBlocks(uids[i]);
+
+				// Make sure the tag has been read correctly.
+				if (mid.length() == 16) {
+					tags.add(
+						new BibTag(
+							uids[i],
+							mid.substring(6),
+							null,
+							Integer.parseInt(mid.substring(2, 4)),
+							Integer.parseInt(mid.substring(4, 6))
+						)
+					);
+				}
+			}
+			
+			return tags;
 		}
-		
-		return true;
-	}
-
-	@Override
-	public Boolean isRunning() {
-		return this.running;
-	}
-
-	/**
-	 * Add event - set tag AFI.
-	 */
-	@Override
-	public void addEventSetTagAFI(String uid, String afi) {
-		eventsSetAFI.add(new EventSetAFI(uid, afi));
-	}
-
-	@Override
-	public void detectCurrentTags() {
-		detectCurrentTags = true;
+		catch (Exception e) {
+			return null;
+		}
 	}
 }

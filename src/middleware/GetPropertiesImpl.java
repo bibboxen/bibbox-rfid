@@ -1,4 +1,4 @@
-package rfid;
+package middleware;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -14,6 +14,7 @@ public class GetPropertiesImpl {
 	private String host;
 	private Integer port;
 	private Boolean debug;
+	private String reader;
 
 	/**
 	 * Set Properties values.
@@ -35,6 +36,7 @@ public class GetPropertiesImpl {
 			host = prop.getProperty("host");
 			port = Integer.parseInt(prop.getProperty("port"));
 			debug = Boolean.parseBoolean(prop.getProperty("debug"));
+			reader = prop.getProperty("reader");
 		} catch (Exception ex) {
 			// @TODO: Handle error.
 		}
@@ -67,5 +69,14 @@ public class GetPropertiesImpl {
 	 */
 	public boolean getDebugProperty() {
 		return this.debug;
+	}
+	
+	/**
+	 * Get reader.
+	 * 
+	 * @return String
+	 */
+	public String getReaderProperty() {
+		return this.reader;
 	}
 }
