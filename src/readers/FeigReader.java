@@ -437,7 +437,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 				String mid = getMIDFromMultipleBlocks(uids[i]);
 
 				// Make sure the tag has been read correctly.
-				if (mid.length() == 26) {
+				if (mid.length() == 16) {
 					tags.add(
 						new BibTag(
 							uids[i],

@@ -54,6 +54,7 @@ public class Driver {
 				}
 			}, 5000, 10000);
 		} catch (Exception e) {
+			e.printStackTrace();
 			logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 		}
 	}
@@ -69,10 +70,12 @@ public class Driver {
 			host = properties.getHostProperty();
 			port = properties.getPortProperty();
 			debug = properties.getDebugProperty();
+			reader = properties.getReaderProperty();
 			
 			return true;
-		} catch (IOException ex) {
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+			logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
 			
 			return false;
 		}
