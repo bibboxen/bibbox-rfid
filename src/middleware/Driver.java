@@ -41,6 +41,8 @@ public class Driver {
 			reader = "feig";
 		}
 
+		System.out.println("Starting client with options --- ws: " + host + ":" + port + ", debug: " + debug + ", reader: " + reader);
+		
 		// Start client.
 		try {
 			client = new Client(reader, new URI("ws://" + host + ":" + port), logger, debug);

@@ -18,6 +18,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	private Boolean debug;
 	private URI serverUri;
 	private Gson gson;
+	private String reader;
 
 	/**
 	 * Constructor.
@@ -36,13 +37,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 		this.logger = logger;
 		this.debug = debug;
 		this.serverUri = serverUri;
-
-		// Initialize TagReader.
-		switch (reader) {
-			case "feig":
-			default:
-				tagReader = new FeigReader(logger, this, debug);
-		}
+		this.reader = reader;
 	}
 	
 	/**
@@ -55,7 +50,14 @@ public class Client implements TagListenerInterface, WebSocketListener {
 			connectWebSocket();
 		}
 		
-		if (!tagReader.isRunning()) {
+		if (tagReader == null || !tagReader.isRunning()) {
+			// Setup new thread.
+			switch (reader) {
+				case "feig":
+				default:
+					tagReader = new FeigReader(logger, this, debug);
+			}
+			
 			tagReader.startReading();
 		}
 	}

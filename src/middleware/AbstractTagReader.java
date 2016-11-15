@@ -56,7 +56,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 */
 	@Override
 	public Boolean isRunning() {
-		return this.running;
+		return running;
 	}
 	
 	/**
@@ -69,9 +69,12 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		}
 		
 		if (connected && !running) {
-			System.out.println("Start");
+			if (debug) {
+				System.out.println("Starting reader thread");
+			}
+
 			running = true;
-			this.start();
+			start();
 		}
 	}
 
@@ -80,7 +83,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 */
 	@Override
 	public void stopReading() {
-		this.running = false;
+		running = false;
 	}
 
 	/**

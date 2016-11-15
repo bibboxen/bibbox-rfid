@@ -407,19 +407,27 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	
 	@Override
 	public Boolean connect() {
+		if (debug) {
+			System.out.println("Connecting to FEIG reader.");
+		}
+		
 		// Initialize FEIG Reader.
 		if (!initiateFeigReader()) {
 			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
 			running = false;
+			connected = false;
 			return false;
 		} else {
 			try {
 				openUSBPort();
 				logger.log("USB Connection: ESTABLISHED");
+				
+				connected = true;
 			}
 			catch (Exception e) {
 				logger.log("USB Connection Error: " + e.getMessage());
 				running = false;
+				connected = false;
 				return false;
 			}
 		}
