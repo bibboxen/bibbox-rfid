@@ -45,7 +45,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 * @param tagListener
 	 *   The tag listener where reader events are passed to.
 	 */
-	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener, Boolean debug) {
+	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener, boolean debug) {
 		this.logger = logger;
 		this.tagListener = tagListener;
 		this.debug = debug;
@@ -54,9 +54,9 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	/**
 	 * Initialize FeigReader
 	 * 
-	 * @return Boolean
+	 * @return boolean
 	 */
-	private Boolean initiateFeigReader() {
+	private boolean initiateFeigReader() {
 		// Initiate the reader object.
 		try {
 			fedm = new FedmIscReader();
@@ -112,7 +112,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 * @throws FeReaderDriverException 
 	 * @throws FePortDriverException 
 	 */
-	public Boolean closeConnection() {
+	public boolean closeConnection() {
 		try {
 			// Close connection if there is any.
 			if (fedm.isConnected()) {
@@ -340,7 +340,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 * @param id
 	 * @param afi
 	 */
-	public Boolean writeAFI(String id, String afi) {
+	public boolean writeAFI(String id, String afi) {
 		// Create byte for AFI.
 		int dec = Integer.parseInt(afi);
 		String afiHex = Integer.toHexString(dec);
@@ -406,7 +406,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	}
 	
 	@Override
-	public Boolean connect() {
+	public boolean connect() {
 		if (debug) {
 			System.out.println("Connecting to FEIG reader.");
 		}

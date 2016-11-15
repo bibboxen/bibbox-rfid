@@ -5,11 +5,11 @@ public interface TagReaderInterface {
 	
 	public void stopReading();
 	
-	public Boolean connect();
+	public boolean connect();
 	
-	public Boolean closeConnection();
+	public boolean closeConnection();
 	
-	public Boolean isRunning();
+	public boolean isRunning();
 	
 	public void addEventSetTagAFI(String uid, String afi);
 	

@@ -15,7 +15,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	private TagReaderInterface tagReader;
 	private WebSocketImpl webSocket;
 	private LoggerImpl logger;
-	private Boolean debug;
+	private boolean debug;
 	private URI serverUri;
 	private Gson gson;
 	private String reader;
@@ -32,7 +32,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 * @param debug
 	 *   Should debugging output be enabled?
 	 */
-	public Client(String reader, URI serverUri, LoggerImpl logger, Boolean debug) {
+	public Client(String reader, URI serverUri, LoggerImpl logger, boolean debug) {
 		this.gson = new Gson();
 		this.logger = logger;
 		this.debug = debug;
@@ -67,7 +67,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 * 
 	 * @return
 	 */
-	public Boolean webSocketIsConnected() {
+	public boolean webSocketIsConnected() {
 		return webSocket != null && webSocket.isConnected();
 	}
 
@@ -149,7 +149,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 * Emit event through WebSocket.
 	 */
 	@Override
-	public void tagAFISet(BibTag bibTag, Boolean success) {
+	public void tagAFISet(BibTag bibTag, boolean success) {
 		if (debug) {
 			System.out.println("Tag afi set " + (success ? "success" : "error") + ": " + bibTag);		
 		}

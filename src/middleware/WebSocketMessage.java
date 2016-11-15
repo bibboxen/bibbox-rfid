@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class WebSocketMessage {
 	private ArrayList<BibTag> tags;
 	private BibTag tag;
-	private Boolean success;
+	private boolean success;
 	private String event;
 	private String message;
 	
@@ -21,10 +21,10 @@ public class WebSocketMessage {
 	public void setTags(ArrayList<BibTag> tags) {
 		this.tags = tags;
 	}
-	public Boolean getSuccess() {
+	public boolean getSuccess() {
 		return success;
 	}
-	public void setSuccess(Boolean success) {
+	public void setSuccess(boolean success) {
 		this.success = success;
 	}
 	public String getEvent() {

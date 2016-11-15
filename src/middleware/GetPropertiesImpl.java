@@ -67,7 +67,7 @@ public class GetPropertiesImpl {
 	 * 
 	 * @return Boolean
 	 */
-	public boolean getDebugProperty() {
+	public Boolean getDebugProperty() {
 		return this.debug;
 	}
 	

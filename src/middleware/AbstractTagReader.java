@@ -12,15 +12,15 @@ import java.util.ArrayList;
  * need to be overridden.
  */
 public abstract class AbstractTagReader extends Thread implements TagReaderInterface {
-	protected Boolean connected = false;
-	protected Boolean running = false;
-	protected Boolean detectCurrentTags = false;
+	protected boolean connected = false;
+	protected boolean running = false;
+	protected boolean detectCurrentTags = false;
 	protected ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
 	protected ArrayList<BibTag> currentTags = new ArrayList<BibTag>();
 	protected ArrayList<EventSetAFI> eventsSetAFI = new ArrayList<EventSetAFI>();
 	protected LoggerImpl logger;
 	protected TagListenerInterface tagListener;
-	protected Boolean debug;
+	protected boolean debug;
 
 	/**
 	 * Get the tags on the device.
@@ -35,27 +35,27 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * 
 	 * @return
 	 */
-	public abstract Boolean connect();
+	public abstract boolean connect();
 	
 	/**
 	 * Connect to the device.
 	 * 
 	 * @return
 	 */
-	public abstract Boolean closeConnection();
+	public abstract boolean closeConnection();
 	
 	/**
 	 * Connect to the device.
 	 * 
 	 * @return
 	 */
-	public abstract Boolean writeAFI(String uid, String afi);
+	public abstract boolean writeAFI(String uid, String afi);
 
 	/**
 	 * Is the reader running?
 	 */
 	@Override
-	public Boolean isRunning() {
+	public boolean isRunning() {
 		return running;
 	}
 	
@@ -113,7 +113,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				// Compare current tags with tags detected.
 				// Emit events if changes.
 				for (int i = 0; i < bibTags.size(); i++) {
-					Boolean contains = false;
+					boolean contains = false;
 					for (int j = 0; j < currentTags.size(); j++) {
 						if (bibTags.get(i).getMID().equals(currentTags.get(j).getMID()) && 
 							bibTags.get(i).getUID().equals(currentTags.get(j).getUID())) {
@@ -126,7 +126,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					}
 				}
 				for (int i = 0; i < currentTags.size(); i++) {
-					Boolean contains = false;
+					boolean contains = false;
 					for (int j = 0; j < bibTags.size(); j++) {
 						if (currentTags.get(i).getMID().equals(bibTags.get(j).getMID()) &&
 							currentTags.get(i).getUID().equals(bibTags.get(j).getUID())) {

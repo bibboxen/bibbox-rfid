@@ -8,7 +8,7 @@ import org.java_websocket.handshake.ServerHandshake;
 
 public class WebSocketImpl extends WebSocketClient  {
 	private LoggerImpl logger;
-	private Boolean connected;
+	private boolean connected = false;
 	private WebSocketListener listener;
 	
 	public WebSocketImpl(URI serverUri, Draft draft, WebSocketListener listener, LoggerImpl logger) {
@@ -44,7 +44,7 @@ public class WebSocketImpl extends WebSocketClient  {
 	 * 
 	 * @return
 	 */
-	public Boolean isConnected() {
+	public boolean isConnected() {
 		return connected;
 	}
 

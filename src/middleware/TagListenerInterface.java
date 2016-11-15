@@ -32,5 +32,5 @@ public interface TagListenerInterface {
 	 * 
 	 * @param bibTag
 	 */
-	public void tagAFISet(BibTag bibTag, Boolean success);
+	public void tagAFISet(BibTag bibTag, boolean success);
 }

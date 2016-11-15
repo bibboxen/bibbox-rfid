@@ -15,7 +15,7 @@ import java.util.TimerTask;
 public class Driver {
 	private static String host;
 	private static Integer port;
-	private static Boolean debug;
+	private static boolean debug;
 	private static String reader;
 	private static LoggerImpl logger;
 	private static Client client;
