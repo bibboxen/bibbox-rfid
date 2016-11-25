@@ -32,8 +32,7 @@ public class Driver {
 
 		// Read config.properties.
 		if (!readConfiguration()) {
-			logger.log("config.properties could not be found");
-			
+			System.out.println("config.properties could not be found");
 			// Defaults.
 			port = 3001;
 			host = "localhost";
@@ -76,9 +75,6 @@ public class Driver {
 			
 			return true;
 		} catch (IOException e) {
-			e.printStackTrace();
-			logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
-			
 			return false;
 		}
 	}
