@@ -60,6 +60,17 @@ public class Client implements TagListenerInterface, WebSocketListener {
 			
 			tagReader.startReading();
 		}
+		
+		if (tagReader == null || !tagReader.isRunning()) {
+			WebSocketMessage msg = new WebSocketMessage();
+			msg.setEvent("rfid.offline");
+			sendMessage(msg);
+		}
+		else {
+			WebSocketMessage msg = new WebSocketMessage();
+			msg.setEvent("rfid.online");
+			sendMessage(msg);
+		}
 	}
 
 	/**
