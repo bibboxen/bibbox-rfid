@@ -13,8 +13,10 @@ import java.util.Properties;
 public class GetPropertiesImpl {
 	private String host;
 	private Integer port;
-	private Boolean debug;
 	private String reader;
+	private String loglevel;
+	private Boolean logtofile;
+	private Boolean logtoconsole;
 
 	/**
 	 * Set Properties values.
@@ -35,7 +37,9 @@ public class GetPropertiesImpl {
 
 			host = prop.getProperty("host");
 			port = Integer.parseInt(prop.getProperty("port"));
-			debug = Boolean.parseBoolean(prop.getProperty("debug"));
+			loglevel = prop.getProperty("loglevel");
+			logtofile = Boolean.parseBoolean(prop.getProperty("logtofile"));
+			logtoconsole = Boolean.parseBoolean(prop.getProperty("logtoconsole"));
 			reader = prop.getProperty("reader");
 		} catch (Exception ex) {
 			// @TODO: Handle error.
@@ -63,12 +67,30 @@ public class GetPropertiesImpl {
 	}
 	
 	/**
-	 * Get debug.
+	 * Get loglevel.
+	 * 
+	 * @return String
+	 */
+	public String getLogLevelProperty() {
+		return this.loglevel;
+	}
+	
+	/**
+	 * Get logtofile.
 	 * 
 	 * @return Boolean
 	 */
-	public Boolean getDebugProperty() {
-		return this.debug;
+	public Boolean getLogToFileProperty() {
+		return this.logtofile;
+	}	
+	
+	/**
+	 * Get logtoconsole.
+	 * 
+	 * @return Boolean
+	 */
+	public Boolean getLogToConsoleProperty() {
+		return this.logtoconsole;
 	}
 	
 	/**

@@ -24,7 +24,7 @@ public class WebSocketImpl extends WebSocketClient  {
 	@Override
 	public void onOpen(ServerHandshake sh) {
 		// WebSocket client connected to server
-		logger.log("WebSocket: connection OPEN");
+		logger.info("WebSocket: connection OPEN");
 
 		connected = true;
 	}
@@ -55,7 +55,7 @@ public class WebSocketImpl extends WebSocketClient  {
 	 */
 	@Override
 	public void onClose(int i, String string, boolean bln) {
-		logger.log("WebSocket: connection CLOSED");
+		logger.info("WebSocket: connection CLOSED");
 		
 		connected = false;
 	}
@@ -65,7 +65,7 @@ public class WebSocketImpl extends WebSocketClient  {
 	 */
 	@Override
 	public void onError(Exception ex) {
-		logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+		logger.error("Error message: " + ex.getMessage() + "\n" + ex.toString());
 		
 		connected = false;
 	}

@@ -45,10 +45,9 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 * @param tagListener
 	 *   The tag listener where reader events are passed to.
 	 */
-	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener, boolean debug) {
+	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener) {
 		this.logger = logger;
 		this.tagListener = tagListener;
-		this.debug = debug;
 	}	
 
 	/**
@@ -63,7 +62,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 		} catch (Exception ex) {
 			// @TODO: Handle.
 			ex.printStackTrace();
-			logger.log("Error message: " + ex.getMessage() + "\n" + ex.toString());
+			logger.error("Error message: " + ex.getMessage() + "\n" + ex.getStackTrace());
 			return false;
 		}
 
@@ -79,8 +78,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 20);
 			return true;
 		} catch (FedmException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.getStackTrace());
+			logger.error("Error code: " + ex.getErrorcode() + "\n" + ex.getStackTrace());
 		}
 		return false;
 	}
@@ -123,8 +121,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			return true;
 		}
 		catch (Exception e) {
-			e.printStackTrace();
-			logger.log("FeigReader closeConnection error: " + e.getMessage() + " --- " + e.toString());
+			logger.error("FeigReader closeConnection error: " + e.getMessage() + " --- " + e.getStackTrace());
 			
 			return false;
 		}
@@ -166,10 +163,8 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
             String midReplaced = midSub.replaceAll(".(.)?", "$1");
             String s = mid.substring(0, 6) + midReplaced;
             return s;
-        } catch(Exception ex){
-        	// Ignore.
-            ex.printStackTrace();
-            logger.log("Could not create MID: " + mid);
+        } catch (Exception ex){
+            logger.warning("Could not create MID: " + mid);
         }
 	
 		return "";
@@ -209,14 +204,11 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 			return dataBlockString;
 		} catch (FePortDriverException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
+			logger.error("Error code: " + ex.getErrorCode() + "\n" + ex.getStackTrace());
 		} catch (FeReaderDriverException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
+			logger.error("Error code: " + ex.getErrorCode() + "\n" + ex.getStackTrace());
 		} catch (FedmException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
+			logger.error("Error code: " + ex.getErrorcode() + "\n" + ex.getStackTrace());
 		}
 		return "";
 	}
@@ -255,14 +247,11 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			fedm.sendProtocol((byte) 0xB0);
 
 		} catch (FedmException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorcode() + "\n" + ex.toString());
+			logger.error("Error code: " + ex.getErrorcode() + "\n" + ex.getStackTrace());
 		} catch (FePortDriverException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
+			logger.error("Error code: " + ex.getErrorCode() + "\n" + ex.getStackTrace());
 		} catch (FeReaderDriverException ex) {
-			ex.printStackTrace();
-			logger.log("Error code: " + ex.getErrorCode() + "\n" + ex.toString());
+			logger.error("Error code: " + ex.getErrorCode() + "\n" + ex.getStackTrace());
 		}
 	}
 
@@ -364,7 +353,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.log("Error code: " + e.getMessage() + "\n" + e.toString());
+			logger.error("Error code: " + e.getMessage() + "\n" + e.getStackTrace());
 			return false;
 		}
 	}
@@ -407,25 +396,23 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	
 	@Override
 	public boolean connect() {
-		if (debug) {
-			System.out.println("Connecting to FEIG reader.");
-		}
+		logger.info("Connecting to FEIG reader.");
 		
 		// Initialize FEIG Reader.
 		if (!initiateFeigReader()) {
-			logger.log("FEIG Reader: Error - CANNOT INITIALIZE");
+			logger.error("FEIG Reader: Error - CANNOT INITIALIZE");
 			running = false;
 			connected = false;
 			return false;
 		} else {
 			try {
 				openUSBPort();
-				logger.log("USB Connection: ESTABLISHED");
+				logger.error("USB Connection: ESTABLISHED");
 				
 				connected = true;
 			}
 			catch (Exception e) {
-				logger.log("USB Connection Error: " + e.getMessage());
+				logger.error("USB Connection Error: " + e.getMessage());
 				running = false;
 				connected = false;
 				return false;

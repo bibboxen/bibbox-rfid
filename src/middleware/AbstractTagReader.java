@@ -20,7 +20,6 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	protected ArrayList<EventSetAFI> eventsSetAFI = new ArrayList<EventSetAFI>();
 	protected LoggerImpl logger;
 	protected TagListenerInterface tagListener;
-	protected boolean debug;
 
 	/**
 	 * Get the tags on the device.
@@ -69,9 +68,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		}
 		
 		if (connected && !running) {
-			if (debug) {
-				System.out.println("Starting reader thread");
-			}
+			logger.info("Starting reader thread");
 
 			running = true;
 			start();
@@ -159,10 +156,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					}
 					
 					if (tag != null) {
-						// DEBUG
-						if (debug) {
-							System.out.println("Writing: " + event.toString());
-						}
+						logger.info("Writing: " + event.toString());
 
 						if (writeAFI(tag.getUID(), event.getAfi())) {
 							tag.setAFI(event.getAfi());
@@ -174,7 +168,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 						}
 					} 
 					else {
-						logger.log("UID: " + event.getUid() + ", could not be found on reader");
+						logger.warning("UID: " + event.getUid() + ", could not be found on reader");
 
 						tagListener.tagAFISet(tag, false);
 					}
@@ -186,16 +180,12 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					detectCurrentTags = false;
 				}
 				
-				// DEBUG
-				if (debug) {
-					System.out.println(currentTags.toString());
-				}
+				logger.info(currentTags.toString());
 
 				// Yield. 
 				Thread.sleep(50);
 			} catch (Exception e) {
-				e.printStackTrace();
-				logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
+				logger.error("Error message: " + e.getMessage() + "\n" + e.getStackTrace());
 			}
 		}
 	}

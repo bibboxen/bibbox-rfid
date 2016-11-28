@@ -15,10 +15,12 @@ import java.util.TimerTask;
 public class Driver {
 	private static String host;
 	private static Integer port;
-	private static boolean debug;
+	private static String loglevel;
 	private static String reader;
 	private static LoggerImpl logger;
 	private static Client client;
+	private static boolean logtofile;
+	private static boolean logtoconsole;
 
 	/**
 	 * Main entry point.
@@ -26,25 +28,33 @@ public class Driver {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		String filename = "LogFile.log";
-		File out = new File(System.getProperty("user.home"), filename);
-		logger = new LoggerImpl(out.getAbsolutePath());
-
 		// Read config.properties.
 		if (!readConfiguration()) {
 			System.out.println("config.properties could not be found");
 			// Defaults.
 			port = 3001;
 			host = "localhost";
-			debug = false;
+			loglevel = "prod";
+			logtofile = false;
+			logtoconsole = false;
 			reader = "feig";
 		}
 
-		System.out.println("Starting client with options --- ws: " + host + ":" + port + ", debug: " + debug + ", reader: " + reader);
+		String filename = "rfid.log";
+		File out = new File(System.getProperty("user.home"), filename);
+		logger = new LoggerImpl(out.getAbsolutePath(), loglevel, logtofile, logtoconsole);
+
+		logger.info(
+				"Starting client with options --- " 
+						+ "ws: " + host + ":" + port
+						+ ", logLevel: " + loglevel
+						+ ", logToFile: " + logtofile
+						+ ", toLogFile: "+ out.getAbsolutePath()
+						+ ", reader: " + reader);
 		
 		// Start client.
 		try {
-			client = new Client(reader, new URI("ws://" + host + ":" + port), logger, debug);
+			client = new Client(reader, new URI("ws://" + host + ":" + port), logger);
 
 			// Make sure the Client is connected every 10 s. 
 			Timer t = new Timer();
@@ -55,8 +65,7 @@ public class Driver {
 				}
 			}, 5000, 10000);
 		} catch (Exception e) {
-			e.printStackTrace();
-			logger.log("Error message: " + e.getMessage() + "\n" + e.toString());
+			logger.error("Error message: " + e.getMessage() + "\n" + e.getStackTrace());
 		}
 	}
 
@@ -70,7 +79,9 @@ public class Driver {
 			properties.setPropValues();
 			host = properties.getHostProperty();
 			port = properties.getPortProperty();
-			debug = properties.getDebugProperty();
+			loglevel = properties.getLogLevelProperty();
+			logtofile = properties.getLogToFileProperty();
+			logtoconsole = properties.getLogToConsoleProperty();
 			reader = properties.getReaderProperty();
 			
 			return true;
