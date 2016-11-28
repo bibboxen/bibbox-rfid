@@ -1,8 +1,9 @@
 package middleware;
 
-import java.io.IOException;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
@@ -14,35 +15,98 @@ import java.util.logging.SimpleFormatter;
  * located in C:\Users\YOUR_USERNAME
  */
 public class LoggerImpl {
-	private Logger logger = Logger.getLogger(LoggerImpl.class.getName());
+	private Logger logger;
 	private FileHandler fh;
+	private ConsoleHandler ch;
+	private LogManager lm;
+	private Level logLevel;
 
 	/**
 	 * Constructor.
 	 * 
 	 * @param path Path to the log file.
+	 * @param loglevel The loglevel.
+	 * @param toFile Log to file?
 	 */
-	public LoggerImpl(String path) {
+	public LoggerImpl(String path, String loglevel, boolean toFile, boolean toConsole) {
+		lm = LogManager.getLogManager();
+		lm.reset();
+
+		logger = Logger.getLogger(LoggerImpl.class.getName());
+		SimpleFormatter formatter = new SimpleFormatter();
+
+		logLevel = parseLogLevel(loglevel);
+		
 		try {
-			// When the second parameter is set to true, the logger will append to the logfile. 
-			// Remove the true statement to make the logger overwrite the logfile.
-			fh = new FileHandler(path, true);   
-			logger.addHandler(fh);
-			SimpleFormatter formatter = new SimpleFormatter();
-			fh.setFormatter(formatter);
-		} catch (IOException ex) {
-			Logger.getLogger(LoggerImpl.class.getName()).log(Level.SEVERE, null, ex);
-		} catch (SecurityException ex) {
-			Logger.getLogger(LoggerImpl.class.getName()).log(Level.SEVERE, null, ex);
+			if (toFile) {
+				fh = new FileHandler(path, true);   
+				fh.setFormatter(formatter);
+				logger.addHandler(fh);
+			}
+
+			if (toConsole) {
+				ch = new ConsoleHandler();
+				ch.setFormatter(formatter);
+				logger.addHandler(ch);
+			}
+			
+			logger.setLevel(logLevel);
+			
+			info("Logger set up.");
+		} catch (Exception ex) {
+			System.out.println(ex.getStackTrace());
 		}
 	}
-
+	
+	/**
+	 * Parse loglevel string.
+	 * 
+	 * off, info, error
+	 * 
+	 * defaults to ALL.
+	 * 
+	 * @param loglevel
+	 * @return
+	 */
+	private static Level parseLogLevel(String loglevel) {
+		if (loglevel.equals("off")) {
+			return Level.OFF;
+		}
+		else if (loglevel.equals("info")) {
+			return Level.INFO;
+		}
+		else if (loglevel.equals("error")) {
+			return Level.SEVERE;
+		}
+		else {
+			return Level.ALL;
+		}
+	}
+	
 	/**
 	 * Log message.
 	 * 
 	 * @param message
 	 */
-	public void log(String message) {
-		logger.info(message);
+	public void info(String message) {
+		logger.log(Level.INFO, message);
+	}
+	
+	/**
+	 * Warning message.
+	 * 
+	 * @param message
+	 */
+	public void warning(String message) {
+		logger.log(Level.WARNING, message);
+	}
+	
+	/**
+	 * Error message.
+	 * 
+	 * @param message
+	 */
+	public void error(String message) {
+		logger.log(Level.SEVERE, message);
 	}
 }

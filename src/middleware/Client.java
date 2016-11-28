@@ -3,6 +3,7 @@ package middleware;
 import java.net.URI;
 import org.java_websocket.drafts.Draft_10;
 import java.util.ArrayList;
+
 import com.google.gson.Gson;
 import readers.FeigReader;
 
@@ -15,7 +16,6 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	private TagReaderInterface tagReader;
 	private WebSocketImpl webSocket;
 	private LoggerImpl logger;
-	private boolean debug;
 	private URI serverUri;
 	private Gson gson;
 	private String reader;
@@ -29,13 +29,10 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 *   The WebSocket URI.
 	 * @param logger
 	 *   The logger.
-	 * @param debug
-	 *   Should debugging output be enabled?
 	 */
-	public Client(String reader, URI serverUri, LoggerImpl logger, boolean debug) {
+	public Client(String reader, URI serverUri, LoggerImpl logger) {
 		this.gson = new Gson();
 		this.logger = logger;
-		this.debug = debug;
 		this.serverUri = serverUri;
 		this.reader = reader;
 	}
@@ -55,7 +52,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 			switch (reader) {
 				case "feig":
 				default:
-					tagReader = new FeigReader(logger, this, debug);
+					tagReader = new FeigReader(logger, this);
 			}
 			
 			tagReader.startReading();
@@ -116,9 +113,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 */
 	@Override
 	public void tagDetected(BibTag bibTag) {
-		if (debug) {
-			System.out.println("Tag detected: " + bibTag);		
-		}
+		logger.info("Tag detected: " + bibTag);
 		
 		WebSocketMessage resp = new WebSocketMessage();
 		resp.setTag(bibTag);
@@ -134,9 +129,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 */
 	@Override
 	public void tagRemoved(BibTag bibTag) {
-		if (debug) {
-			System.out.println("Tag removed: " + bibTag);		
-		}
+		logger.info("Tag removed: " + bibTag);
 		
 		WebSocketMessage resp = new WebSocketMessage();
 		resp.setTag(bibTag);
@@ -166,9 +159,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 */
 	@Override
 	public void tagAFISet(BibTag bibTag, boolean success) {
-		if (debug) {
-			System.out.println("Tag afi set " + (success ? "success" : "error") + ": " + bibTag);		
-		}
+		logger.info("Tag afi set " + (success ? "success" : "error") + ": " + bibTag);
 		
 		WebSocketMessage resp = new WebSocketMessage();
 		resp.setTag(bibTag);
@@ -183,9 +174,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 */
 	@Override
 	public void webSocketMessage(String message) {
-		if (debug) {
-			System.out.println("WebSocket: message RECEIVED: " + message);
-		}
+		logger.info("WebSocket: message RECEIVED: " + message);
 
 		WebSocketMessage msg = gson.fromJson(message, WebSocketMessage.class);
 
