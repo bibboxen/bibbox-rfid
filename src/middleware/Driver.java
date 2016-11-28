@@ -30,7 +30,6 @@ public class Driver {
 	public static void main(String[] args) {
 		// Read config.properties.
 		if (!readConfiguration()) {
-			System.out.println("config.properties could not be found");
 			// Defaults.
 			port = 3001;
 			host = "localhost";
@@ -39,16 +38,55 @@ public class Driver {
 			logtoconsole = false;
 			reader = "feig";
 		}
-
+		
+		// Command line arguments override config.properties.
+		for (int i = 0; i < args.length; i++) {
+			if (args[i].equals("--help")) {
+				System.out.println("Run with options set through commandline arguments: key=value. E.g. java -jar rfid.jar port=5000");
+				System.out.println("Alternatively place a config.properties in the same directory as the jar file with arguments.");
+				System.out.println("Default options are:");
+				System.out.println("port=3001 host=localhost loglevel=prod logtofile=false logtoconsole=false reader=feig");
+			}
+			
+			String[] split = args[i].split("=");
+			
+			if (split.length == 2) {
+				System.out.println(args[i]);
+				
+				switch(split[0]) {
+					case "port":
+						port = Integer.parseInt(split[1]);
+						break;
+					case "host":
+						host = split[1];
+						break;
+					case "loglevel":
+						loglevel = split[1];
+						break;
+					case "logtofile":
+						logtofile = Boolean.parseBoolean(split[1]);
+						break;
+					case "logtoconsole":
+						logtoconsole = Boolean.parseBoolean(split[1]);
+						break;
+					case "reader":
+						reader = split[1];
+						break;
+				}
+			}
+		}
+		
+		// Setup Logger.
 		String filename = "rfid.log";
 		File out = new File(System.getProperty("user.home"), filename);
 		logger = new LoggerImpl(out.getAbsolutePath(), loglevel, logtofile, logtoconsole);
-
+		
 		logger.info(
 				"Starting client with options --- " 
 						+ "ws: " + host + ":" + port
 						+ ", logLevel: " + loglevel
 						+ ", logToFile: " + logtofile
+						+ ", logToConsole: " + logtoconsole
 						+ ", toLogFile: "+ out.getAbsolutePath()
 						+ ", reader: " + reader);
 		
