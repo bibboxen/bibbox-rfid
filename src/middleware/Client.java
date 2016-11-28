@@ -100,6 +100,11 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 * Open a new WebSocket connection.
 	 */
 	public void connectWebSocket() {
+		// Make sure the WebSocket is closed.
+		if (webSocket != null) {
+			webSocket.close();
+		}
+		
 		webSocket = new WebSocketImpl(serverUri, new Draft_10(), this, logger);
 		webSocket.connect();
 	}
