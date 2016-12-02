@@ -21,8 +21,8 @@ public class Driver {
 	private static Client client;
 	private static boolean logtofile;
 	private static boolean logtoconsole;
-	private static int successfulReadsThreshold;
-	private static int threadSleepInMillis;
+	private static int successfulReadsThreshold = 2;
+	private static int threadSleepInMillis = 200;
 
 	/**
 	 * Main entry point.
@@ -39,8 +39,6 @@ public class Driver {
 			logtofile = false;
 			logtoconsole = false;
 			reader = "feig";
-			successfulReadsThreshold = 2;
-			threadSleepInMillis = 200;
 		}
 		
 		// Command line arguments override config.properties.

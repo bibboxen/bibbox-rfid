@@ -172,6 +172,18 @@ public class Client implements TagListenerInterface, WebSocketListener {
 		
 		sendMessage(resp);
 	}
+	
+	/**
+	 * New tags are being processed (TagListenerInterface).
+	 * 
+	 * Emit event through WebSocket.
+	 */
+	@Override
+	public void processingNewTags() {
+		WebSocketMessage resp = new WebSocketMessage();
+		resp.setEvent("rfid.processing");
+		sendMessage(resp);
+	}
 
 	/**
 	 * Message has been received through WebSocket (TagListenerInterface).

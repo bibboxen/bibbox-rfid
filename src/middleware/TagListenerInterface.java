@@ -33,4 +33,9 @@ public interface TagListenerInterface {
 	 * @param bibTag
 	 */
 	public void tagAFISet(BibTag bibTag, boolean success);
+	
+	/**
+	 * The device is processing new tags.
+	 */
+	public void processingNewTags();
 }

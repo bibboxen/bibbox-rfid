@@ -108,36 +108,33 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		while (running) {
 			try {
 				bibTags = getTags();
+				
+				if (currentTags.size() == 0 && bibTags.size() > 0) {
+					tagListener.processingNewTags();
+				}
 								
 				// Compare current tags with tags detected.
 				// Emit events if changes.
-				
-				// Detect tags added.
-				for (BibTag bibTag : bibTags) {
-					for (BibTag currentTag : currentTags) {
+				for (BibTag currentTag : currentTags) {
+					boolean contains = false;
+					
+					for (BibTag bibTag : bibTags) {
 						if (bibTag.getMID().equals(currentTag.getMID()) && 
 							bibTag.getUID().equals(currentTag.getUID())) {
 						
+							contains = true;
+							
 							bibTag.setSuccessfulReads(Math.max(currentTag.getSuccessfulReads(), currentTag.getSuccessfulReads() + 1));
 							
-							if (bibTag.getSuccessfulReads() > successfulReadsThreshold) {
+							// If tag has been detected enough times, send tag detected.
+							if (bibTag.getSuccessfulReads() == successfulReadsThreshold) {
 								tagListener.tagDetected(bibTag);
 							}
+							
 							break;
 						}
 					}
-				}
-				
-				// Detect tags removed.
-				for (BibTag currentTag : currentTags) {
-					boolean contains = false;
-					for (BibTag bibTag : bibTags) {
-						if (currentTag.getMID().equals(bibTag.getMID()) &&
-							currentTag.getUID().equals(bibTag.getUID())) {
-							contains = true;
-							break;
-						}
-					}
+					
 					if (!contains) {
 						tagListener.tagRemoved(currentTag);
 					}
