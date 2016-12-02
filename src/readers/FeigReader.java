@@ -45,9 +45,11 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 * @param tagListener
 	 *   The tag listener where reader events are passed to.
 	 */
-	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener) {
+	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener, int successfulReadsThreshold, int threadSleepInMillis) {
 		this.logger = logger;
 		this.tagListener = tagListener;
+		this.successfulReadsThreshold = successfulReadsThreshold;
+		this.threadSleepInMillis = threadSleepInMillis;
 	}	
 
 	/**

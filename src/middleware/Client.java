@@ -19,6 +19,8 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	private URI serverUri;
 	private Gson gson;
 	private String reader;
+	private int successfulReadsThreshold;
+	private int threadSleepInMillis;
 
 	/**
 	 * Constructor.
@@ -30,11 +32,13 @@ public class Client implements TagListenerInterface, WebSocketListener {
 	 * @param logger
 	 *   The logger.
 	 */
-	public Client(String reader, URI serverUri, LoggerImpl logger) {
+	public Client(String reader, URI serverUri, LoggerImpl logger, int successfulReadsThreshold, int threadSleepInMillis) {
 		this.gson = new Gson();
 		this.logger = logger;
 		this.serverUri = serverUri;
 		this.reader = reader;
+		this.successfulReadsThreshold = successfulReadsThreshold;
+		this.threadSleepInMillis = threadSleepInMillis;
 	}
 	
 	/**
@@ -52,7 +56,7 @@ public class Client implements TagListenerInterface, WebSocketListener {
 			switch (reader) {
 				case "feig":
 				default:
-					tagReader = new FeigReader(logger, this);
+					tagReader = new FeigReader(logger, this, successfulReadsThreshold, threadSleepInMillis);
 			}
 			
 			tagReader.startReading();
