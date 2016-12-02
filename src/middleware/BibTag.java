@@ -5,7 +5,7 @@ package middleware;
  */
 public class BibTag {
 	private String uid, mid, afi;
-	private int seriesLength, numberInSeries;
+	private int seriesLength, numberInSeries, successfulReads;
 
 	/**
 	 * Constructor.
@@ -23,6 +23,7 @@ public class BibTag {
 		this.afi = afi;
 		this.seriesLength = seriesLength;
 		this.numberInSeries = numberInSeries;
+		this.successfulReads = 0;
 	}
 
 	public String getUID() {
@@ -61,10 +62,18 @@ public class BibTag {
 		this.numberInSeries = numberInSeries;
 	}
 
+	public int getSuccessfulReads() {
+		return successfulReads;
+	}
+
+	public void setSuccessfulReads(int successfulReads) {
+		this.successfulReads = successfulReads;
+	}
+
 	/**
 	 * To string.
 	 */
 	public String toString() {
-		return "{ uid: " + this.uid + ", mid: " + this.mid + " ( " + numberInSeries  + "/" + seriesLength + ") }";
+		return "{ uid: " + uid + ", mid: " + mid + " ( " + numberInSeries  + "/" + seriesLength + "), successfulReads: " + successfulReads + " }";
 	}
 }

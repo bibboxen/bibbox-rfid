@@ -20,6 +20,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	protected ArrayList<EventSetAFI> eventsSetAFI = new ArrayList<EventSetAFI>();
 	protected LoggerImpl logger;
 	protected TagListenerInterface tagListener;
+	protected int successfulReadsThreshold = 2;
+	protected int threadSleepInMillis = 10;
 
 	/**
 	 * Get the tags on the device.
@@ -107,32 +109,41 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 			try {
 				bibTags = getTags();
 				
-				// Compare current tags with tags detected.
-				// Emit events if changes.
-				for (int i = 0; i < bibTags.size(); i++) {
-					boolean contains = false;
-					for (int j = 0; j < currentTags.size(); j++) {
-						if (bibTags.get(i).getMID().equals(currentTags.get(j).getMID()) && 
-							bibTags.get(i).getUID().equals(currentTags.get(j).getUID())) {
-							contains = true;
-							break;
+				// Count up number of times detected.
+				// When detected 3 times in a row send tag detected event.
+				for (BibTag bibTag : bibTags) {
+					for (BibTag currentTag : currentTags) {
+						if (currentTag.getMID().equals(bibTag.getMID()) && 
+							currentTag.getUID().equals(bibTag.getUID())) {
+							// Avoid overflow. With overflow maintain old max.
+							bibTag.setSuccessfulReads(Math.max(currentTag.getSuccessfulReads(), currentTag.getSuccessfulReads() + 1));
 						}
-					}
-					if (!contains) {
-						tagListener.tagDetected(bibTags.get(i));
 					}
 				}
-				for (int i = 0; i < currentTags.size(); i++) {
+				
+				// Compare current tags with tags detected.
+				// Emit events if changes.
+				for (BibTag bibTag : bibTags) {
+					for (BibTag currentTag : currentTags) {
+						if (bibTag.getMID().equals(currentTag.getMID()) && 
+							bibTag.getUID().equals(currentTag.getUID()) &&
+							bibTag.getSuccessfulReads() == successfulReadsThreshold) {
+							tagListener.tagDetected(bibTag);
+							break;
+						}
+					}
+				}
+				for (BibTag currentTag : currentTags) {
 					boolean contains = false;
-					for (int j = 0; j < bibTags.size(); j++) {
-						if (currentTags.get(i).getMID().equals(bibTags.get(j).getMID()) &&
-							currentTags.get(i).getUID().equals(bibTags.get(j).getUID())) {
+					for (BibTag bibTag : bibTags) {
+						if (currentTag.getMID().equals(bibTag.getMID()) &&
+							currentTag.getUID().equals(bibTag.getUID())) {
 							contains = true;
 							break;
 						}
 					}
 					if (!contains) {
-						tagListener.tagRemoved(currentTags.get(i));
+						tagListener.tagRemoved(currentTag);
 					}
 				}
 				
@@ -176,14 +187,22 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				
 				// If requested current tags.
 				if (detectCurrentTags) {
-					tagListener.tagsDetected(currentTags);
+					// Find tags that have been read the proper number of times.
+					ArrayList<BibTag> tagsDetected = new ArrayList<BibTag>();
+					for (BibTag currentTag : currentTags) {
+						if (currentTag.getSuccessfulReads() >= successfulReadsThreshold) {
+							tagsDetected.add(currentTag);
+						}
+					}
+				
+					tagListener.tagsDetected(tagsDetected);
 					detectCurrentTags = false;
 				}
 				
 				logger.info(currentTags.toString());
 
 				// Yield. 
-				Thread.sleep(50);
+				Thread.sleep(threadSleepInMillis);
 			} catch (Exception e) {
 				logger.error("Error message: " + e.getMessage() + "\n" + e.getStackTrace());
 			}
