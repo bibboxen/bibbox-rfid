@@ -20,8 +20,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	protected ArrayList<EventSetAFI> eventsSetAFI = new ArrayList<EventSetAFI>();
 	protected LoggerImpl logger;
 	protected TagListenerInterface tagListener;
-	protected int successfulReadsThreshold = 2;
-	protected int threadSleepInMillis = 10;
+	protected int successfulReadsThreshold;
+	protected int threadSleepInMillis;
 
 	/**
 	 * Get the tags on the device.
@@ -108,31 +108,27 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		while (running) {
 			try {
 				bibTags = getTags();
-				
-				// Count up number of times detected.
-				// When detected 3 times in a row send tag detected event.
-				for (BibTag bibTag : bibTags) {
-					for (BibTag currentTag : currentTags) {
-						if (currentTag.getMID().equals(bibTag.getMID()) && 
-							currentTag.getUID().equals(bibTag.getUID())) {
-							// Avoid overflow. With overflow maintain old max.
-							bibTag.setSuccessfulReads(Math.max(currentTag.getSuccessfulReads(), currentTag.getSuccessfulReads() + 1));
-						}
-					}
-				}
-				
+								
 				// Compare current tags with tags detected.
 				// Emit events if changes.
+				
+				// Detect tags added.
 				for (BibTag bibTag : bibTags) {
 					for (BibTag currentTag : currentTags) {
 						if (bibTag.getMID().equals(currentTag.getMID()) && 
-							bibTag.getUID().equals(currentTag.getUID()) &&
-							bibTag.getSuccessfulReads() == successfulReadsThreshold) {
-							tagListener.tagDetected(bibTag);
+							bibTag.getUID().equals(currentTag.getUID())) {
+						
+							bibTag.setSuccessfulReads(Math.max(currentTag.getSuccessfulReads(), currentTag.getSuccessfulReads() + 1));
+							
+							if (bibTag.getSuccessfulReads() > successfulReadsThreshold) {
+								tagListener.tagDetected(bibTag);
+							}
 							break;
 						}
 					}
 				}
+				
+				// Detect tags removed.
 				for (BibTag currentTag : currentTags) {
 					boolean contains = false;
 					for (BibTag bibTag : bibTags) {

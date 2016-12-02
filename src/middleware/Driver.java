@@ -40,7 +40,7 @@ public class Driver {
 			logtoconsole = false;
 			reader = "feig";
 			successfulReadsThreshold = 2;
-			threadSleepInMillis = 100;
+			threadSleepInMillis = 200;
 		}
 		
 		// Command line arguments override config.properties.
