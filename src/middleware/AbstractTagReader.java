@@ -1,5 +1,7 @@
 package middleware;
 
+import java.io.ByteArrayOutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 
 /**
@@ -100,6 +102,105 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	public void detectCurrentTags() {
 		detectCurrentTags = true;
 	}
+		
+	/**
+	 * Reverse the order of the bytes in the data.
+	 * 
+	 * @TODO: Optimize process.
+	 * 
+	 * @param b
+	 * @return
+	 */
+	private String reverseData(String data) {
+		return 
+				data.substring(6, 8) + data.substring(4, 6) + data.substring(2, 4) + data.substring(0, 2) +
+				data.substring(14, 16) + data.substring(12, 14) + data.substring(10, 12) + data.substring(8, 10) +
+				data.substring(22, 24) + data.substring(20, 22) + data.substring(18, 20) + data.substring(16, 18) +
+				data.substring(30, 32) + data.substring(28, 30) + data.substring(26, 28) + data.substring(24, 26) +
+				data.substring(38, 40) + data.substring(36, 38) + data.substring(34, 36) + data.substring(32, 34) +
+				data.substring(46, 48) + data.substring(44, 46) + data.substring(42, 44) + data.substring(40, 42) +
+				data.substring(54, 56) + data.substring(52, 54) + data.substring(50, 52) + data.substring(48, 50) +
+				data.substring(62, 64) + data.substring(60, 62) + data.substring(58, 60) + data.substring(56, 58);
+	}
+	
+	/**
+	 * Decode a utf-8 hex encoded string.
+	 * @param s
+	 * @return
+	 * @throws UnsupportedEncodingException 
+	 * 
+	 * @see https://en.wikipedia.org/wiki/UTF-8
+	 */
+	private String utf8decode(String s) throws UnsupportedEncodingException {
+		ByteArrayOutputStream bOutput = new ByteArrayOutputStream(12);
+		
+		for (int i = 0; i < s.length(); i+=2) {
+			int b = Integer.parseInt(s.substring(i, i+2), 16);
+ 			
+			// Break at first null character.
+			if (b == 0) {
+				break;
+			}
+			
+			bOutput.write(b);
+		}
+		
+		return new String(bOutput.toByteArray(), "UTF-8");
+	}
+	
+	/**
+	 * Read each tag.
+	 * 
+	 * Make sure it complies with library standards.
+	 * 
+	 * @TODO: Fix this to correctly follow ISO 28560-1, ISO 28560-3.
+	 * 
+	 * @param tags
+	 */
+	private void processTags(ArrayList<BibTag> tags) {
+		for (BibTag tag : tags) {
+			String data = tag.getData();
+			
+			// Make sure the tag has the correct order.
+			// @TODO: Can we get this info from somewhere else?
+			if (data.substring(6, 8).equals("11")) {
+				data = reverseData(data);
+			}
+			
+			// We only accept tags that start with 11
+			if (!data.substring(0, 2).equals("11") || data.length() != 64) {
+				// Then we do not recognize the tag.
+				logger.warning("Could not create MID from data: " + data);
+
+				tags.remove(tag);
+
+				continue;
+			}
+
+			// @TODO: Validate tag.
+			
+			// Extract mid from primaryItemIdentifierBlock
+			String primaryItemIdentifierBlock = data.substring(6, 38);
+			
+			try {
+				String mid = utf8decode(primaryItemIdentifierBlock);
+
+				// Update tag with data.
+				tag.setMID(mid);
+			}
+			catch (UnsupportedEncodingException e) {
+				// Then we do not recognize the tag.
+				logger.warning("Could not create MID from data: " + data);
+
+				tags.remove(tag);
+
+				continue;
+			}
+			
+			tag.setSeriesLength(Integer.parseInt(data.substring(2, 4)));
+			tag.setNumberInSeries(Integer.parseInt(data.substring(4, 6)));
+		}
+	}
 	
 	/**
 	 * Start the thread.
@@ -108,6 +209,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		while (running) {
 			try {
 				bibTags = getTags();
+				processTags(bibTags);
 				
 				if (currentTags.size() == 0 && bibTags.size() > 0) {
 					tagListener.processingNewTags();
