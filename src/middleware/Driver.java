@@ -47,7 +47,7 @@ public class Driver {
 				System.out.println("Run with options set through commandline arguments: key=value. E.g. java -jar rfid.jar port=5000");
 				System.out.println("Alternatively place a config.properties in the same directory as the jar file with arguments.");
 				System.out.println("Default options are:");
-				System.out.println("port=3001 host=localhost loglevel=prod logtofile=false logtoconsole=false reader=feig thread_sleep_in_millis=100 successful_reads_threshold=2");
+				System.out.println("port=3001 host=localhost loglevel=prod logtofile=false logtoconsole=false reader=feig thread_sleep_in_millis=200 successful_reads_threshold=2");
 			}
 			
 			String[] split = args[i].split("=");

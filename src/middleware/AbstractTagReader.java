@@ -295,11 +295,15 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				}
 				
 				logger.info(currentTags.toString());
-
-				// Yield. 
-				Thread.sleep(threadSleepInMillis);
 			} catch (Exception e) {
 				logger.error("Error message: " + e.getMessage() + "\n" + e.getStackTrace());
+			}
+
+			// Yield CPU.
+			try {
+				Thread.sleep(threadSleepInMillis);
+			} catch (InterruptedException e) {
+				logger.error("InterruptedException: " + e.getMessage() + "\n" + e.getStackTrace());
 			}
 		}
 	}
