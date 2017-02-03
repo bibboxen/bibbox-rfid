@@ -211,22 +211,26 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				bibTags = getTags();
 				processTags(bibTags);
 				
+				// Notify that new tags have been detected.
 				if (currentTags.size() == 0 && bibTags.size() > 0) {
 					tagListener.processingNewTags();
 				}
-								
+
 				// Compare current tags with tags detected.
-				// Emit events if changes.
+				// Update successful reads counter for tags detected in last iteration.
+				// Emit removed event, for tags that are no longer detected compared with last iteration.
 				for (BibTag currentTag : currentTags) {
 					boolean contains = false;
 					
 					for (BibTag bibTag : bibTags) {
+						// If tag is the same, update successful reads counter.
 						if (bibTag.getMID().equals(currentTag.getMID()) && 
 							bibTag.getUID().equals(currentTag.getUID())) {
 						
 							contains = true;
 							
-							bibTag.setSuccessfulReads(Math.max(currentTag.getSuccessfulReads(), currentTag.getSuccessfulReads() + 1));
+							// Count up number of successful reads, until one larger than successfulReadsThreshold.
+							bibTag.setSuccessfulReads(Math.min(currentTag.getSuccessfulReads() + 1, successfulReadsThreshold + 1));
 							
 							// If tag has been detected enough times, send tag detected.
 							if (bibTag.getSuccessfulReads() == successfulReadsThreshold) {
@@ -242,7 +246,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					}
 				}
 				
-				// Updated current tags.
+				// Update current tags, with tags detected.
 				currentTags = new ArrayList<BibTag>(bibTags);
 
 				// Process EventSetAFI events.
@@ -253,14 +257,15 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					BibTag tag = null;
 					
 					// Get tag.
-					for (BibTag b : bibTags) {
-						if (b.getUID().equals(event.getUid())) {
-							tag = b;
+					for (BibTag currentTag : currentTags) {
+						if (currentTag.getUID().equals(event.getUid())) {
+							tag = currentTag;
 							
 							break;
 						}
 					}
 					
+					// If tag exists, set the AFI.
 					if (tag != null) {
 						logger.info("Writing: " + event.toString());
 
@@ -294,6 +299,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					detectCurrentTags = false;
 				}
 				
+				// Log current tags.
 				logger.info(currentTags.toString());
 			} catch (Exception e) {
 				logger.error("Error message: " + e.getMessage() + "\n" + e.getStackTrace());
@@ -306,5 +312,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				logger.error("InterruptedException: " + e.getMessage() + "\n" + e.getStackTrace());
 			}
 		}
+		
+		// Make sure detected tags are cleared.
+		currentTags = new ArrayList<BibTag>();
 	}
 }
