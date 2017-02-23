@@ -21,6 +21,8 @@ public class Driver {
 	private static Client client;
 	private static boolean logtofile;
 	private static boolean logtoconsole;
+	private static int successfulReadsThreshold = 2;
+	private static int threadSleepInMillis = 200;
 
 	/**
 	 * Main entry point.
@@ -45,7 +47,7 @@ public class Driver {
 				System.out.println("Run with options set through commandline arguments: key=value. E.g. java -jar rfid.jar port=5000");
 				System.out.println("Alternatively place a config.properties in the same directory as the jar file with arguments.");
 				System.out.println("Default options are:");
-				System.out.println("port=3001 host=localhost loglevel=prod logtofile=false logtoconsole=false reader=feig");
+				System.out.println("port=3001 host=localhost loglevel=prod logtofile=false logtoconsole=false reader=feig thread_sleep_in_millis=200 successful_reads_threshold=2");
 			}
 			
 			String[] split = args[i].split("=");
@@ -69,6 +71,12 @@ public class Driver {
 					case "logtoconsole":
 						logtoconsole = Boolean.parseBoolean(split[1]);
 						break;
+					case "successful_reads_threshold":
+						successfulReadsThreshold = Integer.parseInt(split[1]);
+						break;
+					case "thread_sleep_in_millis":
+						threadSleepInMillis = Integer.parseInt(split[1]);
+						break;
 					case "reader":
 						reader = split[1];
 						break;
@@ -88,11 +96,13 @@ public class Driver {
 						+ ", logToFile: " + logtofile
 						+ ", logToConsole: " + logtoconsole
 						+ ", toLogFile: "+ out.getAbsolutePath()
+						+ ", successfulReadsThreshold: " + successfulReadsThreshold
+						+ ", threadSleepInMillis: " + threadSleepInMillis
 						+ ", reader: " + reader);
 		
 		// Start client.
 		try {
-			client = new Client(reader, new URI("ws://" + host + ":" + port), logger);
+			client = new Client(reader, new URI("ws://" + host + ":" + port), logger, successfulReadsThreshold, threadSleepInMillis);
 
 			// Make sure the Client is connected every 10 s. 
 			Timer t = new Timer();

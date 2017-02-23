@@ -4,8 +4,8 @@ package middleware;
  * BibTag.
  */
 public class BibTag {
-	private String uid, mid, afi;
-	private int seriesLength, numberInSeries;
+	private String uid, mid, afi, data;
+	private int seriesLength, numberInSeries, successfulReads;
 
 	/**
 	 * Constructor.
@@ -16,15 +16,22 @@ public class BibTag {
 	 * @param seriesLength
 	 * @param numberInSeries
 	 */
-	public BibTag(String uid, String mid, String afi, int seriesLength, int numberInSeries) {
+	public BibTag(String uid, String data, String mid, String afi, int seriesLength, int numberInSeries) {
 		super();
 		this.uid = uid;
 		this.mid = mid;
 		this.afi = afi;
+		this.data = data;
 		this.seriesLength = seriesLength;
 		this.numberInSeries = numberInSeries;
+		this.successfulReads = 0;
 	}
 
+	public BibTag(String uid, String data) {
+		this.uid = uid;
+		this.data = data;
+	}
+	
 	public String getUID() {
 		return this.uid;
 	}
@@ -61,10 +68,26 @@ public class BibTag {
 		this.numberInSeries = numberInSeries;
 	}
 
+	public int getSuccessfulReads() {
+		return successfulReads;
+	}
+
+	public void setSuccessfulReads(int successfulReads) {
+		this.successfulReads = successfulReads;
+	}
+
+	public String getData() {
+		return data;
+	}
+
+	public void setData(String data) {
+		this.data = data;
+	}
+
 	/**
 	 * To string.
 	 */
 	public String toString() {
-		return "{ uid: " + this.uid + ", mid: " + this.mid + " ( " + numberInSeries  + "/" + seriesLength + ") }";
+		return "{ uid: " + uid + ", mid: " + mid + " ( " + numberInSeries  + "/" + seriesLength + "), successfulReads: " + successfulReads + " }";
 	}
 }

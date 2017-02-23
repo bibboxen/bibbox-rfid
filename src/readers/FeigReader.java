@@ -45,9 +45,11 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 * @param tagListener
 	 *   The tag listener where reader events are passed to.
 	 */
-	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener) {
+	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener, int successfulReadsThreshold, int threadSleepInMillis) {
 		this.logger = logger;
 		this.tagListener = tagListener;
+		this.successfulReadsThreshold = successfulReadsThreshold;
+		this.threadSleepInMillis = threadSleepInMillis;
 	}	
 
 	/**
@@ -138,36 +140,26 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 	@Override
 	public void onSendProtocol(FedmIscReader arg0, byte[] arg1) {}
-
+	
 	/**
-	 * Get the MID.
+	 * Get the data block.
 	 * 
 	 * @param id
 	 *   @TODO: What is this id?
 	 * 
 	 * @return
 	 */
-	private String getMIDFromMultipleBlocks(String id) {
-		// This method uses readSpecific block
-		// to read four blocks which is enough
-		// to get the MID on a bib tag.
-		// Then the MID is created and returned.
+	private String getData(String id) {
 		String b0 = readSpecificBlock(id, (byte) 0);
 		String b1 = readSpecificBlock(id, (byte) 1);
 		String b2 = readSpecificBlock(id, (byte) 2);
 		String b3 = readSpecificBlock(id, (byte) 3);
-		String mid = b0 + b1 + b2 + b3;
+		String b4 = readSpecificBlock(id, (byte) 4);
+		String b5 = readSpecificBlock(id, (byte) 5);
+		String b6 = readSpecificBlock(id, (byte) 6);
+		String b7 = readSpecificBlock(id, (byte) 7);
 
-		try{
-            String midSub = mid.substring(6, 26);
-            String midReplaced = midSub.replaceAll(".(.)?", "$1");
-            String s = mid.substring(0, 6) + midReplaced;
-            return s;
-        } catch (Exception ex){
-            logger.warning("Could not create MID: " + mid);
-        }
-	
-		return "";
+		return b0 + b1 + b2 + b3 + b4 + b5 + b6 + b7;
 	}
 
 	/**
@@ -431,20 +423,15 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 			// Register tags on device.
 			for (int i = 0; i < uids.length; i++) {
-				String mid = getMIDFromMultipleBlocks(uids[i]);
+				String data = getData(uids[i]);
 
 				// Make sure the tag has been read correctly.
-				if (mid.length() == 16) {
-					tags.add(
-						new BibTag(
-							uids[i],
-							mid.substring(6),
-							null,
-							Integer.parseInt(mid.substring(2, 4)),
-							Integer.parseInt(mid.substring(4, 6))
-						)
-					);
-				}
+				tags.add(
+					new BibTag(
+						uids[i],
+						data
+					)
+				);
 			}
 			
 			return tags;
