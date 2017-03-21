@@ -160,13 +160,13 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	private void processTags(ArrayList<BibTag> tags) {
 		for (BibTag tag : tags) {
 			String data = tag.getData();
-			
+
 			// Make sure the tag has the correct order.
 			// @TODO: Can we get this info from somewhere else?
 			if (data.substring(6, 8).equals("11")) {
 				data = reverseData(data);
 			}
-			
+
 			// We only accept tags that start with 11
 			if (!data.substring(0, 2).equals("11") || data.length() != 64) {
 				// Then we do not recognize the tag.
