@@ -140,6 +140,38 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 	@Override
 	public void onSendProtocol(FedmIscReader arg0, byte[] arg1) {}
+
+	/**
+	 * Read AFI.
+	 *
+	 * @param id
+	 *
+	 * @return
+	 *   AFI
+	 *   -1 == error
+	 */
+	private int readAFI(String id) {
+		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
+		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, (byte)0x2B);
+		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, (byte) 0x00);
+		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_ADR, (byte) 0x01);
+
+		try {
+			fedm.sendProtocol((byte) 0xB0);
+
+			int idx = fedm.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
+			if (idx < 0) {
+				return -1;
+			}
+			byte afi = fedm.getByteTableData(idx, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_AFI);
+
+			return (afi & 0xFF);
+		}
+		catch (Exception e) {
+			System.out.println(e);
+		}
+		return -1;
+	}
 	
 	/**
 	 * Get the data block.
@@ -342,7 +374,10 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 			fedm.sendProtocol((byte) 0xB0);
 
-			return true;
+			// Confirm that the AFI was correctly written.
+			String readAFI = "" + readAFI(id);
+
+			return readAFI.equals(afi);
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.error("Error code: " + e.getMessage() + "\n" + e.getStackTrace());
