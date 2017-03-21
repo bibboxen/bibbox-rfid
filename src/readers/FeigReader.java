@@ -168,7 +168,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			return (afi & 0xFF);
 		}
 		catch (Exception e) {
-			System.out.println(e);
+			logger.error(e.getMessage());
 		}
 		return -1;
 	}
