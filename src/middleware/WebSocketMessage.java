@@ -11,7 +11,7 @@ public class WebSocketMessage {
 	private long timestamp; 
 	
 	public WebSocketMessage() {
-		this.timestamp = System.currentTimeMillis() / 1000L;
+		this.timestamp = System.currentTimeMillis();
 	}
 
 	public BibTag getTag() {

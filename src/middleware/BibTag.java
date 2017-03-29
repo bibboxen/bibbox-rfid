@@ -26,7 +26,7 @@ public class BibTag {
 		this.seriesLength = seriesLength;
 		this.numberInSeries = numberInSeries;
 		this.successfulReads = 0;
-		this.timestamp = System.currentTimeMillis() / 1000L;
+		this.timestamp = System.currentTimeMillis();
 	}
 
 	public BibTag(String uid, String data) {
