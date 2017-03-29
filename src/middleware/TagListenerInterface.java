@@ -4,6 +4,8 @@ import java.util.ArrayList;
 
 /**
  * TagListenerInterface.
+ * 
+ * Describes the interface for events on a tag-reader.
  */
 public interface TagListenerInterface {
 	/**

@@ -108,7 +108,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * 
 	 * @TODO: Optimize process.
 	 * 
-	 * @param b
+	 * @param data Raw data from the reader.
+	 * 
 	 * @return
 	 */
 	private String reverseData(String data) {
@@ -125,8 +126,11 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	
 	/**
 	 * Decode a utf-8 hex encoded string.
+	 * 
 	 * @param s
+	 * 
 	 * @return
+	 * 
 	 * @throws UnsupportedEncodingException 
 	 * 
 	 * @see https://en.wikipedia.org/wiki/UTF-8

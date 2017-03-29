@@ -26,11 +26,9 @@ public class GetPropertiesImpl {
 	public void setPropValues() throws IOException {
 		Properties prop = new Properties();
 
-		FileInputStream file;
-
 		// The config.properties file must be located next to the executable .jar file.
 		String path = "./config.properties";
-		file = new FileInputStream(path);
+		FileInputStream file = new FileInputStream(path);
 
 		try {
 			prop.load(file);
@@ -42,7 +40,7 @@ public class GetPropertiesImpl {
 			logtoconsole = Boolean.parseBoolean(prop.getProperty("logtoconsole"));
 			reader = prop.getProperty("reader");
 		} catch (Exception ex) {
-			// @TODO: Handle error.
+			System.out.println("Error with properties file: " + ex.getMessage());
 		}
 
 		file.close();
@@ -67,7 +65,7 @@ public class GetPropertiesImpl {
 	}
 	
 	/**
-	 * Get loglevel.
+	 * Get log level.
 	 * 
 	 * @return String
 	 */
@@ -76,7 +74,7 @@ public class GetPropertiesImpl {
 	}
 	
 	/**
-	 * Get logtofile.
+	 * Get log to file.
 	 * 
 	 * @return Boolean
 	 */
@@ -85,7 +83,7 @@ public class GetPropertiesImpl {
 	}	
 	
 	/**
-	 * Get logtoconsole.
+	 * Get log to console.
 	 * 
 	 * @return Boolean
 	 */
