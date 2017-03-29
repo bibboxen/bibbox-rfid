@@ -32,6 +32,7 @@ public class BibTag {
 	public BibTag(String uid, String data) {
 		this.uid = uid;
 		this.data = data;
+		this.timestamp = System.currentTimeMillis();
 	}
 	
 	public String getUID() {
