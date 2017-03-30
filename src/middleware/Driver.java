@@ -59,24 +59,31 @@ public class Driver {
 					case "port":
 						port = Integer.parseInt(split[1]);
 						break;
+
 					case "host":
 						host = split[1];
 						break;
+
 					case "loglevel":
 						loglevel = split[1];
 						break;
+
 					case "logtofile":
 						logtofile = Boolean.parseBoolean(split[1]);
 						break;
+
 					case "logtoconsole":
 						logtoconsole = Boolean.parseBoolean(split[1]);
 						break;
+
 					case "successful_reads_threshold":
 						successfulReadsThreshold = Integer.parseInt(split[1]);
 						break;
+
 					case "thread_sleep_in_millis":
 						threadSleepInMillis = Integer.parseInt(split[1]);
 						break;
+
 					case "reader":
 						reader = split[1];
 						break;
@@ -95,7 +102,7 @@ public class Driver {
 						+ ", logLevel: " + loglevel
 						+ ", logToFile: " + logtofile
 						+ ", logToConsole: " + logtoconsole
-						+ ", toLogFile: "+ out.getAbsolutePath()
+						+ ", toLogFile: " + out.getAbsolutePath()
 						+ ", successfulReadsThreshold: " + successfulReadsThreshold
 						+ ", threadSleepInMillis: " + threadSleepInMillis
 						+ ", reader: " + reader);

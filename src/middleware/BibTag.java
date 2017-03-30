@@ -6,6 +6,7 @@ package middleware;
 public class BibTag {
 	private String uid, mid, afi, data;
 	private int seriesLength, numberInSeries, successfulReads;
+	private long timestamp; 
 
 	/**
 	 * Constructor.
@@ -25,11 +26,13 @@ public class BibTag {
 		this.seriesLength = seriesLength;
 		this.numberInSeries = numberInSeries;
 		this.successfulReads = 0;
+		this.timestamp = System.currentTimeMillis();
 	}
 
 	public BibTag(String uid, String data) {
 		this.uid = uid;
 		this.data = data;
+		this.timestamp = System.currentTimeMillis();
 	}
 	
 	public String getUID() {
@@ -82,6 +85,14 @@ public class BibTag {
 
 	public void setData(String data) {
 		this.data = data;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
+	}
+
+	public void setTimestamp(long timestamp) {
+		this.timestamp = timestamp;
 	}
 
 	/**

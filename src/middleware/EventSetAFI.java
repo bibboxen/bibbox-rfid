@@ -1,5 +1,10 @@
 package middleware;
 
+/**
+ * EventSetAFI.
+ * 
+ * Information about the tag to set AFI. Received from the front-end.
+ */
 public class EventSetAFI {
 	private String uid;
 	private String afi;

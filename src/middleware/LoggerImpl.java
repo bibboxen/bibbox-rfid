@@ -11,8 +11,7 @@ import java.util.logging.SimpleFormatter;
  * Logger
  * 
  * This class is the implementation of the Logger class. This is used to log
- * error message etc. into the LogFile.log which will be automatically
- * located in C:\Users\YOUR_USERNAME
+ * error message etc. into the LogFile.log.
  */
 public class LoggerImpl {
 	private Logger logger;
@@ -25,7 +24,7 @@ public class LoggerImpl {
 	 * Constructor.
 	 * 
 	 * @param path Path to the log file.
-	 * @param loglevel The loglevel.
+	 * @param loglevel The log level.
 	 * @param toFile Log to file?
 	 */
 	public LoggerImpl(String path, String loglevel, boolean toFile, boolean toConsole) {
@@ -59,7 +58,7 @@ public class LoggerImpl {
 	}
 	
 	/**
-	 * Parse loglevel string.
+	 * Parse log level string.
 	 * 
 	 * off, info, error
 	 * 
