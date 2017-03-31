@@ -459,12 +459,14 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			// Register tags on device.
 			for (int i = 0; i < uids.length; i++) {
 				String data = getData(uids[i]);
+				String afi = "" + readAFI(uids[i]);
 
 				// Make sure the tag has been read correctly.
 				tags.add(
 					new BibTag(
 						uids[i],
-						data
+						data,
+						afi
 					)
 				);
 			}
