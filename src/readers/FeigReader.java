@@ -151,12 +151,13 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 *   -1 == error
 	 */
 	private int readAFI(String id) {
-		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
-		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, (byte)0x2B);
-		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, (byte) 0x00);
-		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_ADR, (byte) 0x01);
-
 		try {
+			// Read table.
+			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
+			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, (byte)0x2B);
+			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, (byte) 0x00);
+			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_ADR, (byte) 0x01);
+
 			fedm.sendProtocol((byte) 0xB0);
 
 			int idx = fedm.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
@@ -374,6 +375,9 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 			fedm.sendProtocol((byte) 0xB0);
 
+			// Clear data after write.
+			clearTable();
+
 			// Confirm that the AFI was correctly written.
 			String readAFI = "" + readAFI(id);
 
@@ -394,18 +398,8 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 * @throws FeReaderDriverException
 	 */
 	public String[] getUIDs() throws FedmException, FePortDriverException, FeReaderDriverException {
-		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
-		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, 0x00);
-		fedm.deleteTable(FedmIscReaderConst.ISO_TABLE);
-
-		fedm.sendProtocol((byte) 0x69); // RFReset
-		fedm.sendProtocol((byte) 0xB0); // ISOCmd
-
-		// @TODO - Review: Possibility of infinite loop?
-		while (fedm.getLastStatus() == 0x94) { // more flag set?
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_MORE, 0x01);
-			fedm.sendProtocol((byte) 0xB0);
-		}
+		// Clear ISO table.
+		clearTable();
 
 		// Get number of entries in the ISO_TABLE.
 		int tableLength = fedm.getTableLength(FedmIscReaderConst.ISO_TABLE);
@@ -421,6 +415,33 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 		return uids;
 	}
 	
+	/**
+	 * Clear data table.
+	 *
+	 * @return boolean Success?
+	 */
+	private boolean clearTable() {
+		try {
+			// Clear for new read.
+			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
+			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, 0x00);
+			fedm.deleteTable(FedmIscReaderConst.ISO_TABLE);
+			fedm.sendProtocol((byte) 0x69); // RFReset
+			fedm.sendProtocol((byte) 0xB0); // ISOCmd
+
+			while (fedm.getLastStatus() == 0x94) { // more flag set?
+				fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_MORE, 0x01);
+				fedm.sendProtocol((byte) 0xB0);
+			}
+		}
+		catch (Exception e) {
+			logger.error("Error code: " + e.getMessage() + "\n" + e.getStackTrace());
+			return false;
+		}
+
+		return true;
+	}
+
 	@Override
 	public boolean connect() {
 		logger.info("Connecting to FEIG reader.");
