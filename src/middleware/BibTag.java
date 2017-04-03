@@ -29,9 +29,10 @@ public class BibTag {
 		this.timestamp = System.currentTimeMillis();
 	}
 
-	public BibTag(String uid, String data) {
+	public BibTag(String uid, String data, String afi) {
 		this.uid = uid;
 		this.data = data;
+		this.afi = afi;
 		this.timestamp = System.currentTimeMillis();
 	}
 	
