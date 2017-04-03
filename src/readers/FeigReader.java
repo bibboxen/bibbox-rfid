@@ -21,6 +21,7 @@
 package readers;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import de.feig.FeIscListener;
 import de.feig.FePortDriverException;
@@ -141,6 +142,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	@Override
 	public void onSendProtocol(FedmIscReader arg0, byte[] arg1) {}
 
+	@Override
 	/**
 	 * Read AFI.
 	 *
@@ -150,7 +152,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 *   AFI
 	 *   -1 == error
 	 */
-	private int readAFI(String id) {
+	public int readAFI(String id) {
 		try {
 			// Read table.
 			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
@@ -375,13 +377,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 			fedm.sendProtocol((byte) 0xB0);
 
-			// Clear data after write.
-			clearTable();
-
-			// Confirm that the AFI was correctly written.
-			String readAFI = "" + readAFI(id);
-
-			return readAFI.equals(afi);
+			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.error("Error code: " + e.getMessage() + "\n" + e.getStackTrace());
@@ -399,7 +395,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	 */
 	public String[] getUIDs() throws FedmException, FePortDriverException, FeReaderDriverException {
 		// Clear ISO table.
-		clearTable();
+		clearReader();
 
 		// Get number of entries in the ISO_TABLE.
 		int tableLength = fedm.getTableLength(FedmIscReaderConst.ISO_TABLE);
@@ -415,12 +411,13 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 		return uids;
 	}
 	
+	@Override
 	/**
 	 * Clear data table.
 	 *
 	 * @return boolean Success?
 	 */
-	private boolean clearTable() {
+	public boolean clearReader() {
 		try {
 			// Clear for new read.
 			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
@@ -470,20 +467,21 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	}
 
 	@Override
-	protected ArrayList<BibTag> getTags() {
+	protected HashMap<String, BibTag> getTags() {
 		try {
 			String[] uids = getUIDs();
 			
 			// Clear registered tags.
-			ArrayList<BibTag> tags = new ArrayList<BibTag>();
+			HashMap<String, BibTag> tags = new HashMap<String, BibTag>();
 
+			
 			// Register tags on device.
 			for (int i = 0; i < uids.length; i++) {
 				String data = getData(uids[i]);
 				String afi = "" + readAFI(uids[i]);
 
 				// Make sure the tag has been read correctly.
-				tags.add(
+				tags.put(uids[i],
 					new BibTag(
 						uids[i],
 						data,
