@@ -246,14 +246,16 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				// Compare current tags with tags detected.
 				// Update successful reads counter for tags detected in last iteration.
 				// Emit removed event, for tags that are no longer detected compared with last iteration.
-			
-				for (BibTag currentTag : currentTags.values()) {
-					boolean contains = false;
+				for (Map.Entry<String, BibTag> entry : currentTags.entrySet()) {
+				    String uid = entry.getKey();
+				    BibTag currentTag = entry.getValue();
 
-					if (newTags.containsKey(currentTag.getUID())) {
+				    boolean contains = false;
+
+					if (newTags.containsKey(uid) && newTags.get(uid).getMID().equals(currentTag.getMID())) {
 						contains = true;
 
-						BibTag bibTag = newTags.get(currentTag.getUID());
+						BibTag bibTag = newTags.get(uid);
 						
 						// Count up number of successful reads, until one larger than successfulReadsThreshold.
 						bibTag.setSuccessfulReads(Math.min(currentTag.getSuccessfulReads() + 1, successfulReadsThreshold + 1));
@@ -262,8 +264,6 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 						if (bibTag.getSuccessfulReads() == successfulReadsThreshold) {
 							tagListener.tagDetected(bibTag);
 						}
-						
-						break;
 					}
 					
 					if (!contains) {
@@ -309,6 +309,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					BibTag tag = currentTags.get(event2.getUid());
 					String afi = Integer.toString(readAFI(event2.getUid()));
 					
+					tag.setAFI(afi);
+
 					if (event2.getAfi().equals(afi)) {
 						tagListener.tagAFISet(tag, true);
 					}
