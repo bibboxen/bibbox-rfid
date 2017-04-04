@@ -3,6 +3,9 @@ package middleware;
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * AbstractTagReader.
@@ -17,8 +20,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	protected boolean connected = false;
 	protected boolean running = false;
 	protected boolean detectCurrentTags = false;
-	protected ArrayList<BibTag> bibTags = new ArrayList<BibTag>();
-	protected ArrayList<BibTag> currentTags = new ArrayList<BibTag>();
+	protected HashMap<String, BibTag> newTags = new HashMap<String, BibTag>();
+	protected HashMap<String, BibTag> currentTags = new HashMap<String, BibTag>();
 	protected ArrayList<EventSetAFI> eventsSetAFI = new ArrayList<EventSetAFI>();
 	protected LoggerImpl logger;
 	protected TagListenerInterface tagListener;
@@ -31,7 +34,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * @return
 	 *   ArrayList of BibTags.
 	 */
-	protected abstract ArrayList<BibTag> getTags();
+	protected abstract HashMap<String, BibTag> getTags();
 	
 	/**
 	 * Connect to the device.
@@ -48,12 +51,27 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	public abstract boolean closeConnection();
 	
 	/**
-	 * Connect to the device.
+	 * Write the AFI.
 	 * 
 	 * @return
 	 */
 	public abstract boolean writeAFI(String uid, String afi);
 
+	/**
+	 * Read the AFI.
+	 * 
+	 * @param uid
+	 * @return
+	 */
+	public abstract int readAFI(String uid);
+	
+	/**
+	 * Clear already read data.
+	 * 
+	 * @return
+	 */
+	public abstract boolean clearReader();
+	
 	/**
 	 * Is the reader running?
 	 */
@@ -161,8 +179,13 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * 
 	 * @param tags
 	 */
-	private void processTags(ArrayList<BibTag> tags) {
-		for (BibTag tag : tags) {
+	private void processTags(HashMap<String, BibTag> tags) {
+		Iterator<Map.Entry<String, BibTag>> iterator = tags.entrySet().iterator();
+		while (iterator.hasNext()) {
+		    Map.Entry<String, BibTag> entry = iterator.next();
+		    
+		    BibTag tag = entry.getValue();
+
 			String data = tag.getData();
 
 			// Make sure the tag has the correct order.
@@ -176,7 +199,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				// Then we do not recognize the tag.
 				logger.warning("Could not create MID from data: " + data);
 
-				tags.remove(tag);
+				iterator.remove();
 
 				continue;
 			}
@@ -196,7 +219,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				// Then we do not recognize the tag.
 				logger.warning("Could not create MID from data: " + data);
 
-				tags.remove(tag);
+				iterator.remove();
 
 				continue;
 			}
@@ -212,36 +235,34 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	public void run() {
 		while (running) {
 			try {
-				bibTags = getTags();
-				processTags(bibTags);
+				newTags = getTags();
+				processTags(newTags);
 				
 				// Notify that new tags have been detected.
-				if (currentTags.size() == 0 && bibTags.size() > 0) {
+				if (currentTags.size() == 0 && newTags.size() > 0) {
 					tagListener.processingNewTags();
 				}
 
 				// Compare current tags with tags detected.
 				// Update successful reads counter for tags detected in last iteration.
 				// Emit removed event, for tags that are no longer detected compared with last iteration.
-				for (BibTag currentTag : currentTags) {
-					boolean contains = false;
-					
-					for (BibTag bibTag : bibTags) {
-						// If tag is the same, update successful reads counter.
-						if (bibTag.getMID().equals(currentTag.getMID()) && 
-							bibTag.getUID().equals(currentTag.getUID())) {
+				for (Map.Entry<String, BibTag> entry : currentTags.entrySet()) {
+				    String uid = entry.getKey();
+				    BibTag currentTag = entry.getValue();
+
+				    boolean contains = false;
+
+					if (newTags.containsKey(uid) && newTags.get(uid).getMID().equals(currentTag.getMID())) {
+						contains = true;
+
+						BibTag bibTag = newTags.get(uid);
 						
-							contains = true;
-							
-							// Count up number of successful reads, until one larger than successfulReadsThreshold.
-							bibTag.setSuccessfulReads(Math.min(currentTag.getSuccessfulReads() + 1, successfulReadsThreshold + 1));
-							
-							// If tag has been detected enough times, send tag detected.
-							if (bibTag.getSuccessfulReads() == successfulReadsThreshold) {
-								tagListener.tagDetected(bibTag);
-							}
-							
-							break;
+						// Count up number of successful reads, until one larger than successfulReadsThreshold.
+						bibTag.setSuccessfulReads(Math.min(currentTag.getSuccessfulReads() + 1, successfulReadsThreshold + 1));
+						
+						// If tag has been detected enough times, send tag detected.
+						if (bibTag.getSuccessfulReads() == successfulReadsThreshold) {
+							tagListener.tagDetected(bibTag);
 						}
 					}
 					
@@ -251,40 +272,49 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				}
 				
 				// Update current tags, with tags detected.
-				currentTags = new ArrayList<BibTag>(bibTags);
+				currentTags = new HashMap<String, BibTag>(newTags);
 
 				// Process EventSetAFI events.
 				ArrayList<EventSetAFI> events = new ArrayList<EventSetAFI>(eventsSetAFI);
 				eventsSetAFI.clear();
 				
+				// Set AFI values.
 				for (EventSetAFI event : events) {
-					BibTag tag = null;
-					
-					// Get tag.
-					for (BibTag currentTag : currentTags) {
-						if (currentTag.getUID().equals(event.getUid())) {
-							tag = currentTag;
-							
-							break;
-						}
-					}
+					BibTag tag = currentTags.get(event.getUid());
 					
 					// If tag exists, set the AFI.
 					if (tag != null) {
 						logger.info("Writing: " + event.toString());
 
-						if (writeAFI(tag.getUID(), event.getAfi())) {
-							tag.setAFI(event.getAfi());
-							
-							tagListener.tagAFISet(tag, true);
-						}
-						else {
+						boolean writeSuccess = writeAFI(tag.getUID(), event.getAfi());
+						
+						if (!writeSuccess) {
 							tagListener.tagAFISet(tag, false);
+							events.remove(event);
 						}
-					} 
+					}
 					else {
 						logger.warning("UID: " + event.getUid() + ", could not be found on reader");
 
+						tagListener.tagAFISet(tag, false);
+						events.remove(event);
+					}
+				}
+				
+				// Clear reader from old data.
+				clearReader();
+				
+				// Check AFI values written and report back result.
+				for (EventSetAFI event2 : events) {
+					BibTag tag = currentTags.get(event2.getUid());
+					String afi = Integer.toString(readAFI(event2.getUid()));
+					
+					tag.setAFI(afi);
+
+					if (event2.getAfi().equals(afi)) {
+						tagListener.tagAFISet(tag, true);
+					}
+					else {
 						tagListener.tagAFISet(tag, false);
 					}
 				}
@@ -293,7 +323,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				if (detectCurrentTags) {
 					// Find tags that have been read the proper number of times.
 					ArrayList<BibTag> tagsDetected = new ArrayList<BibTag>();
-					for (BibTag currentTag : currentTags) {
+					for (BibTag currentTag : currentTags.values()) {
 						if (currentTag.getSuccessfulReads() >= successfulReadsThreshold) {
 							tagsDetected.add(currentTag);
 						}
@@ -318,6 +348,6 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		}
 		
 		// Make sure detected tags are cleared.
-		currentTags = new ArrayList<BibTag>();
+		currentTags = new HashMap<String, BibTag>();
 	}
 }
