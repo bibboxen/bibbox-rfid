@@ -346,7 +346,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					} else {
 						logger.warning("UID: " + event.getUid() + ", could not be found on reader");
 
-						tagListener.tagAFISet(tag, false);
+						tagListener.tagAFISet(new BibTag(event.getUid(), "", event.getAfi()), false);
 						events.remove(event);
 					}
 				}
