@@ -238,17 +238,17 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Start the thread.
 	 */
 	public void run() {
+		// Bookkeeping variables.
+		BibTag bibTag;
+		BibTag currentTag;
+		String uid;
+		boolean contains;
+		String afi;
+
 		while (running) {
 			try {
 				newTags = getTags();
 				processTags(newTags);
-
-				// Bookkeeping variables.
-				BibTag bibTag;
-				BibTag currentTag;
-				String uid;
-				boolean contains;
-				String afi;
 
 				// Notify that new tags have been detected.
 				if (currentTags.size() == 0 && newTags.size() > 0) {
