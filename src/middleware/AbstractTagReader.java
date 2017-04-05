@@ -209,7 +209,9 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		byte[] buffer = DatatypeConverter.parseHexBinary(data);
 
 		String calculatedCrc = Integer.toHexString(crc16(buffer));
-		calculatedCrc = calculatedCrc.substring(2, 4) + calculatedCrc.substring(0, 2);
+
+		// Convert to match output from crc16, without leading zeros.
+		crc = crc.substring(2, 4).replaceFirst("^0+(?!$)", "") + crc.substring(0, 2);
 
 		return crc.equals(calculatedCrc);
 	}
@@ -346,7 +348,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 					} else {
 						logger.warning("UID: " + event.getUid() + ", could not be found on reader");
 
-						tagListener.tagAFISet(tag, false);
+						tagListener.tagAFISet(new BibTag(event.getUid(), "", event.getAfi()), false);
 						events.remove(event);
 					}
 				}

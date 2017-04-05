@@ -379,8 +379,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 
 			return true;
 		} catch (Exception e) {
-			e.printStackTrace();
-			logger.error("Error code: " + e.getMessage() + "\n" + e.getStackTrace());
+			logger.error("Error code: " + e.getMessage());
 			return false;
 		}
 	}
@@ -432,7 +431,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			}
 		}
 		catch (Exception e) {
-			logger.error("Error code: " + e.getMessage() + "\n" + e.getStackTrace());
+			logger.error("Error code: " + e.getMessage());
 			return false;
 		}
 
