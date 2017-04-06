@@ -91,6 +91,6 @@ public class BibTag {
 	 * To string.
 	 */
 	public String toString() {
-		return "{ uid: " + uid + ", mid: " + mid + " ( " + numberInSeries  + "/" + seriesLength + ") }";
+		return "{ uid: " + uid + ", mid: " + mid + " ( " + numberInSeries  + "/" + seriesLength + ") - " + data +" }";
 	}
 }

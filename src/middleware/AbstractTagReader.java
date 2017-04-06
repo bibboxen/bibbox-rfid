@@ -294,7 +294,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		// Bookkeeping variables.
 		BibTag tag;
 		String uid;
-		String afi;
+		String chipAfi;
 
 		while (running) {
 			try {
@@ -361,11 +361,11 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 
 					// Check AFI values written and report back result.
 					for (EventSetAFI event2 : events) {
-						afi = Integer.toString(readAFI(event2.getUid()));
+						chipAfi = Integer.toString(readAFI(event2.getUid()));
 						tag = currentTags.get(event2.getUid());
-						tag.setAFI(afi);
 
-						if (event2.getAfi().equals(afi)) {
+						if (event2.getAfi().equals(chipAfi)) {
+							tag.setAFI(chipAfi);
 							tagListener.tagAFISet(tag, true);
 						} else {
 							tagListener.tagAFISet(tag, false);
