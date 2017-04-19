@@ -33,7 +33,6 @@ import de.feig.FedmIscReader;
 import de.feig.FedmIscReaderConst;
 import de.feig.FedmIscReaderID;
 import de.feig.TagHandler.FedmIscTagHandler;
-import de.feig.TagHandler.FedmIscTagHandler_ISO15693;
 import de.feig.TagHandler.FedmIscTagHandler_Result;
 import middleware.AbstractTagReader;
 import middleware.BibTag;
@@ -41,18 +40,15 @@ import middleware.LoggerImpl;
 import middleware.TagListenerInterface;
 
 public class FeigReader extends AbstractTagReader implements FeIscListener {
-	private FedmIscReader fedm;
+	private FedmIscReader reader;
 
 	/**
 	 * Constructor.
 	 * 
-	 * @param logger
-	 *            The logger implementation.
-	 * @param tagListener
-	 *            The tag listener where reader events are passed to.
+	 * @param logger The logger implementation.
+	 * @param tagListener The tag listener where reader events are passed to.
 	 */
-	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener, int successfulReadsThreshold,
-			int threadSleepInMillis) {
+	public FeigReader(LoggerImpl logger, TagListenerInterface tagListener, int successfulReadsThreshold, int threadSleepInMillis) {
 		this.logger = logger;
 		this.tagListener = tagListener;
 		this.successfulReadsThreshold = successfulReadsThreshold;
@@ -67,7 +63,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	private boolean initiateFeigReader() {
 		// Initiate the reader object.
 		try {
-			fedm = new FedmIscReader();
+			reader = new FedmIscReader();
 		} catch (Exception ex) {
 			// @TODO: Handle.
 			ex.printStackTrace();
@@ -75,7 +71,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 			return false;
 		}
 
-		if (fedm == null) {
+		if (reader == null) {
 			return false;
 		}
 
@@ -84,7 +80,7 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 		// which means the reader can read an inventory of max 20.
 		// The reader will therefore work best when 20 tags on reader.
 		try {
-			fedm.setTableSize(FedmIscReaderConst.ISO_TABLE, 20);
+			reader.setTableSize(FedmIscReaderConst.ISO_TABLE, 20);
 			return true;
 		} catch (FedmException ex) {
 			logger.error("Error code: " + ex.getErrorcode() + "\n" + ex.getStackTrace());
@@ -104,13 +100,9 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 		closeConnection();
 
 		// Connect to USB.
-		fedm.connectUSB(0);
-		fedm.addEventListener(this, FeIscListener.SEND_STRING_EVENT);
-		fedm.addEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
-
-		// Read important reader properties and set reader type in reader
-		// object.
-		fedm.readReaderInfo();
+		reader.connectUSB(0);
+		reader.addEventListener(this, FeIscListener.SEND_STRING_EVENT);
+		reader.addEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
 	}
 
 	/**
@@ -123,10 +115,10 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	public boolean closeConnection() {
 		try {
 			// Close connection if there is any.
-			if (fedm.isConnected()) {
-				fedm.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
-				fedm.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
-				fedm.disConnect();
+			if (reader.isConnected()) {
+				reader.removeEventListener(this, FeIscListener.SEND_STRING_EVENT);
+				reader.removeEventListener(this, FeIscListener.RECEIVE_STRING_EVENT);
+				reader.disConnect();
 			}
 			return true;
 		} catch (Exception e) {
@@ -189,18 +181,18 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	public int readAFI(String id) {
 		try {
 			// Read table.
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, (byte) 0x2B);
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, (byte) 0x00);
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_ADR, (byte) 0x01);
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, (byte) 0x2B);
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, (byte) 0x00);
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_ADR, (byte) 0x01);
 
-			fedm.sendProtocol((byte) 0xB0);
+			reader.sendProtocol((byte) 0xB0);
 
-			int idx = fedm.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
+			int idx = reader.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
 			if (idx < 0) {
 				return -1;
 			}
-			byte afi = fedm.getByteTableData(idx, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_AFI);
+			byte afi = reader.getByteTableData(idx, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_AFI);
 
 			return (afi & 0xFF);
 		} catch (Exception e) {
@@ -222,20 +214,20 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 		String afiHex = Integer.toHexString(dec);
 		byte byteAfi = (byte) (Integer.parseInt(afiHex, 16) & 0xff);
 
-		fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
+		reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_REQ_UID, id);
 
 		try {
-			int idx = fedm.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
+			int idx = reader.findTableIndex(0, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_SNR, id);
 			if (idx < 0) {
 				return false;
 			}
 
-			fedm.setTableData(idx, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_AFI, byteAfi);
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, (byte) 0x27);
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, (byte) 0x00);
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_ADR, (byte) 0x01);
+			reader.setTableData(idx, FedmIscReaderConst.ISO_TABLE, FedmIscReaderConst.DATA_AFI, byteAfi);
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, (byte) 0x27);
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, (byte) 0x00);
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_ADR, (byte) 0x01);
 
-			fedm.sendProtocol((byte) 0xB0);
+			reader.sendProtocol((byte) 0xB0);
 
 			return true;
 		} catch (Exception e) {
@@ -253,15 +245,15 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	public boolean clearReader() {
 		try {
 			// Clear for new read.
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
-			fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, 0x00);
-			fedm.deleteTable(FedmIscReaderConst.ISO_TABLE);
-			fedm.sendProtocol((byte) 0x69); // RFReset
-			fedm.sendProtocol((byte) 0xB0); // ISOCmd
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_CMD, 0x01);
+			reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE, 0x00);
+			reader.deleteTable(FedmIscReaderConst.ISO_TABLE);
+			reader.sendProtocol((byte) 0x69); // RFReset
+			reader.sendProtocol((byte) 0xB0); // ISOCmd
 
-			while (fedm.getLastStatus() == 0x94) { // more flag set?
-				fedm.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_MORE, 0x01);
-				fedm.sendProtocol((byte) 0xB0);
+			while (reader.getLastStatus() == 0x94) { // more flag set?
+				reader.setData(FedmIscReaderID.FEDM_ISC_TMP_B0_MODE_MORE, 0x01);
+				reader.sendProtocol((byte) 0xB0);
 			}
 		} catch (Exception e) {
 			logger.error("Error code: " + e.getMessage());
@@ -272,40 +264,46 @@ public class FeigReader extends AbstractTagReader implements FeIscListener {
 	}
 
 	@Override
+	/**
+	 * Get the tags currently reachable.
+	 */
 	protected HashMap<String, BibTag> getTags() throws FedmException, FePortDriverException, FeReaderDriverException {
 		HashMap<String, BibTag> tags = new HashMap<String, BibTag>();
-
-		HashMap<String, FedmIscTagHandler> inventory = fedm.tagInventory(true, (byte) 0, (byte) 1);
-
 		FedmIscTagHandler th = null;
 		FedmIscTagHandler_Result res = new FedmIscTagHandler_Result();
-		int back = 0;
+		int dataReadSuccess = 0;
 		int tagDriver = 0;
+		BibTag tag;
+		String uid;
+		String afi;
+
+		HashMap<String, FedmIscTagHandler> inventory = reader.tagInventory(true, (byte) 0, (byte) 1);
 
 		// Read tags with data.
-		for (Map.Entry<String, FedmIscTagHandler> e : inventory.entrySet()) {
-			String uid = (String) e.getKey();
-			th = (FedmIscTagHandler) e.getValue();
-			th = fedm.tagSelect(th, tagDriver);
+		for (Map.Entry<String, FedmIscTagHandler> entry : inventory.entrySet()) {
+			// Get the UID.
+			uid = (String) entry.getKey();
 
-			if (th instanceof FedmIscTagHandler_ISO15693) {
-				FedmIscTagHandler_ISO15693 thIso = (FedmIscTagHandler_ISO15693) th;
-				back = thIso.readMultipleBlocksWithSecStatus(0, 8, res);
-				
-				// 0 = success.
-				if (back == 0) {
-					tags.put(uid, new BibTag(uid, DatatypeConverter.printHexBinary(res.data), null));
-				}
-			} else {
-				logger.error("TagHandler not instanceof FedmIscTagHandler_ISO15693 for UID: " + uid);
+			// Select tag handler.
+			th = reader.tagSelect(entry.getValue(), tagDriver);
+
+			// Read the data blocks.
+			dataReadSuccess = th.readMultipleBlocksWithSecStatus(0, 8, res);
+
+			// 0 = success. If success, the result is in the res variable.
+			if (dataReadSuccess == 0) {
+				tags.put(uid, new BibTag(uid, DatatypeConverter.printHexBinary(res.data), null));
+			}
+			else {
+				logger.error("Could not read data for UID: " + uid + ", ignoring tag.");
 			}
 		}
 
 		// Read AFI values.
 		for (Map.Entry<String, BibTag> entry : tags.entrySet()) {
-			BibTag tag = entry.getValue();
+			tag = entry.getValue();
 
-			String afi = Integer.toString(readAFI(tag.getUID()));
+			afi = Integer.toString(readAFI(tag.getUID()));
 
 			tag.setAFI(afi);
 		}
