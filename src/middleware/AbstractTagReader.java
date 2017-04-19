@@ -9,6 +9,10 @@ import java.util.Map;
 
 import javax.xml.bind.DatatypeConverter;
 
+import de.feig.FePortDriverException;
+import de.feig.FeReaderDriverException;
+import de.feig.FedmException;
+
 /**
  * AbstractTagReader.
  * 
@@ -34,8 +38,11 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Get the tags on the device.
 	 * 
 	 * @return ArrayList of BibTags.
+	 * @throws FedmException 
+	 * @throws FeReaderDriverException 
+	 * @throws FePortDriverException 
 	 */
-	protected abstract HashMap<String, BibTag> getTags();
+	protected abstract HashMap<String, BibTag> getTags() throws FedmException, FePortDriverException, FeReaderDriverException;
 
 	/**
 	 * Connect to the device.
