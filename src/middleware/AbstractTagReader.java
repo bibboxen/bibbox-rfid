@@ -9,6 +9,10 @@ import java.util.Map;
 
 import javax.xml.bind.DatatypeConverter;
 
+import de.feig.FePortDriverException;
+import de.feig.FeReaderDriverException;
+import de.feig.FedmException;
+
 /**
  * AbstractTagReader.
  * 
@@ -34,8 +38,11 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Get the tags on the device.
 	 * 
 	 * @return ArrayList of BibTags.
+	 * @throws FedmException 
+	 * @throws FeReaderDriverException 
+	 * @throws FePortDriverException 
 	 */
-	protected abstract HashMap<String, BibTag> getTags();
+	protected abstract HashMap<String, BibTag> getTags() throws FedmException, FePortDriverException, FeReaderDriverException;
 
 	/**
 	 * Connect to the device.
@@ -211,7 +218,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		String calculatedCrc = Integer.toHexString(crc16(buffer));
 
 		// Convert to match output from crc16, without leading zeros.
-		crc = crc.substring(2, 4).replaceFirst("^0+(?!$)", "") + crc.substring(0, 2);
+		crc = (crc.substring(2, 4) + crc.substring(0, 2)).replaceFirst("^0+(?!$)", "");
 
 		return crc.equals(calculatedCrc);
 	}
