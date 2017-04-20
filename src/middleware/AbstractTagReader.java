@@ -218,7 +218,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		String calculatedCrc = Integer.toHexString(crc16(buffer));
 
 		// Convert to match output from crc16, without leading zeros.
-		crc = crc.substring(2, 4).replaceFirst("^0+(?!$)", "") + crc.substring(0, 2);
+		crc = (crc.substring(2, 4) + crc.substring(0, 2)).replaceFirst("^0+(?!$)", "");
 
 		return crc.equals(calculatedCrc);
 	}
