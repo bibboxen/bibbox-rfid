@@ -240,14 +240,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * @param data
 	 * @return
 	 */
-	private boolean checkOwnerInstitution(String data) {
-		try {
-			String ownerInstitution = utf8decode(data.substring(42, 64), false);
-
-			return ownerInstitution.matches("^[A-Z]{2}[0-9]{5}$");
-		} catch (UnsupportedEncodingException e) {
-			return false;
-		}
+	private boolean checkOwnerInstitution(String ownerInstitution) {
+		return ownerInstitution.matches("^[A-Z]{2}[0-9]{5}$");
 	}
 
 	/**
@@ -264,7 +258,9 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		Map.Entry<String, BibTag> entry;
 		BibTag tag;
 		String data;
+		String mid;
 		String primaryItemIdentifierBlock;
+		String ownerInstitution;
 
 		while (iterator.hasNext()) {
 			entry = iterator.next();
@@ -284,7 +280,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 			// We only accept tags that start with 11 and has a data length of 64.
 			if (!data.substring(0, 2).equals("11") || data.length() != 64) {
 				// Then we do not recognize the tag.
-				logger.warning("Could not create MID from data: " + data);
+				logger.warning("Tag does start with 11 or length of 64: " + data);
 
 				iterator.remove();
 				continue;
@@ -297,25 +293,30 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 
 				// This is a hack to handle tags that do not follow standards and do not have valid CRC's.
 				// If it follows standards and does not have a valid CRC, ignore the tag.
-				if (checkOwnerInstitution(data)) {
+				try {
+					ownerInstitution = utf8decode(data.substring(42, 64), false);
+					if (checkOwnerInstitution(ownerInstitution)) {
+						iterator.remove();
+						continue;
+					}
+					else {
+						logger.warning(
+							"Owner institution does not follow convensions: " +
+							ownerInstitution +
+							". Ignoring validation of tag."
+						);
+					}
+				} catch (UnsupportedEncodingException e) {
 					iterator.remove();
 					continue;
 				}
-				else {
-					try {
-						logger.warning("Owner institution does not follow convensions: " + utf8decode(data.substring(42, 64), false)
-						+ ". Ignoring validation of tag.");
-					} catch (UnsupportedEncodingException e) {
-						// Ignore error.
-					}
-				}
 			}
 
-			// Extract mid from primaryItemIdentifierBlock
-			primaryItemIdentifierBlock = data.substring(6, 38);
-
 			try {
-				String mid = utf8decode(primaryItemIdentifierBlock);
+				// Extract mid from primary item identifier block.
+				primaryItemIdentifierBlock = data.substring(6, 38);
+
+				mid = utf8decode(primaryItemIdentifierBlock);
 
 				// Update tag with data.
 				tag.setMID(mid);
