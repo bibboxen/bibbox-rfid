@@ -49,7 +49,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Connect to the device.
 	 * 
 	 * @return
-	 *   Success?
+	 *   On success returns true, otherwise false.
 	 */
 	public abstract boolean connect();
 
@@ -57,7 +57,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Connect to the device.
 	 * 
 	 * @return
-	 *   Success?
+	 *   On success returns true, otherwise false.
 	 */
 	public abstract boolean closeConnection();
 
@@ -65,7 +65,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Write the AFI.
 	 * 
 	 * @return
-	 *   Success?
+	 *   On success returns true, otherwise false.
 	 */
 	public abstract boolean writeAFI(String uid, String afi);
 
@@ -83,7 +83,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Clear already read data.
 	 * 
 	 * @return
-	 *   Success?
+	 *   On success returns true, otherwise false.
 	 */
 	public abstract boolean clearReader();
 
@@ -232,7 +232,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Check crc.
 	 *
 	 * @return
-	 *   Did the crc's match?
+	 *   If the the CRCs match returns true, otherwise false.
 	 */
 	private boolean crc(String crc, String data) {
 		data = data.substring(0, 38) + data.substring(42, 64) + "0000";
