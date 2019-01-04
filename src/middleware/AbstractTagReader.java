@@ -161,14 +161,14 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * 
 	 * @see https://en.wikipedia.org/wiki/UTF-8
 	 */
-	private String utf8decode(String s) throws UnsupportedEncodingException {
+	private String utf8decode(String s, boolean breakAtNull) throws UnsupportedEncodingException {
 		ByteArrayOutputStream bOutput = new ByteArrayOutputStream(12);
 
 		for (int i = 0; i < s.length(); i += 2) {
 			int b = Integer.parseInt(s.substring(i, i + 2), 16);
 
 			// Break at first null character.
-			if (b == 0) {
+			if (breakAtNull && b == 0) {
 				break;
 			}
 
@@ -176,6 +176,17 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 		}
 
 		return new String(bOutput.toByteArray(), "UTF-8");
+	}
+
+	/**
+	 * Decode a utf-8 hex encoded string and break at first null character.
+	 *
+	 * @param s
+	 * @return
+	 * @throws UnsupportedEncodingException
+	 */
+	private String utf8decode(String s) throws UnsupportedEncodingException {
+		return utf8decode(s, true);
 	}
 
 	/**
@@ -224,6 +235,22 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	}
 
 	/**
+	 * Check if owner institution matches ISIL.
+	 *
+	 * @param data
+	 * @return
+	 */
+	private boolean checkOwnerInstitution(String data) {
+		try {
+			String ownerInstitution = utf8decode(data.substring(42, 64), false);
+
+			return ownerInstitution.matches("^[A-Z]{2}[0-9]{5}$");
+		} catch (UnsupportedEncodingException e) {
+			return false;
+		}
+	}
+
+	/**
 	 * Read each tag.
 	 * 
 	 * Make sure it complies with library standards.
@@ -249,27 +276,46 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 			// Make sure the tag has the correct order.
 			// @TODO: Can we get this info from somewhere else?
 			if (data.substring(6, 8).equals("11")) {
+				logger.info("Ensuring tag order, reversing data in: " + data);
+
 				data = reverseData(data);
 			}
 
-			// We only accept tags that start with 11
+			// We only accept tags that start with 11 and has a data length of 64.
 			if (!data.substring(0, 2).equals("11") || data.length() != 64) {
 				// Then we do not recognize the tag.
 				logger.warning("Could not create MID from data: " + data);
 
 				iterator.remove();
-
 				continue;
 			}
+
+			// Get owner institution.
+			/*
+			try {
+				logger.info("Owner institution: " + utf8decode(data.substring(42, 64), false));
+			} catch (UnsupportedEncodingException e1) {}
+			*/
 
 			// Validate tag.
 			if (!crc(data.substring(38, 42).toLowerCase(), data)) {
 				// Then we do not recognize the tag.
 				logger.warning("Could not validate tag: " + data);
 
-				iterator.remove();
-
-				continue;
+				// This is a hack to handle tags that do not follow standards and do not have valid CRC's.
+				// If it follows standards and does not have a valid CRC, ignore the tag.
+				if (checkOwnerInstitution(data)) {
+					iterator.remove();
+					continue;
+				}
+				else {
+					try {
+						logger.warning("Owner institution does not follow convensions: " + utf8decode(data.substring(42, 64), false)
+						+ ". Ignoring validation of tag.");
+					} catch (UnsupportedEncodingException e) {
+						// Ignore error.
+					}
+				}
 			}
 
 			// Extract mid from primaryItemIdentifierBlock
