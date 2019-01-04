@@ -37,7 +37,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	/**
 	 * Get the tags on the device.
 	 * 
-	 * @return ArrayList of BibTags.
+	 * @return
+	 *   ArrayList of BibTags.
 	 * @throws FedmException 
 	 * @throws FeReaderDriverException 
 	 * @throws FePortDriverException 
@@ -48,6 +49,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Connect to the device.
 	 * 
 	 * @return
+	 *   Success?
 	 */
 	public abstract boolean connect();
 
@@ -55,6 +57,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Connect to the device.
 	 * 
 	 * @return
+	 *   Success?
 	 */
 	public abstract boolean closeConnection();
 
@@ -62,6 +65,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Write the AFI.
 	 * 
 	 * @return
+	 *   Success?
 	 */
 	public abstract boolean writeAFI(String uid, String afi);
 
@@ -69,7 +73,9 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Read the AFI.
 	 * 
 	 * @param uid
+	 *   Unique Id of tag.
 	 * @return
+	 *   The AFI value.
 	 */
 	public abstract int readAFI(String uid);
 
@@ -77,6 +83,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * Clear already read data.
 	 * 
 	 * @return
+	 *   Success?
 	 */
 	public abstract boolean clearReader();
 
@@ -135,9 +142,9 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * @TODO: Optimize process.
 	 * 
 	 * @param data
-	 *            Raw data from the reader.
-	 * 
+	 *   Raw data from the reader.
 	 * @return
+	 *   String of data in reverse order.
 	 */
 	private String reverseData(String data) {
 		return data.substring(6, 8) + data.substring(4, 6) + data.substring(2, 4) + data.substring(0, 2)
@@ -153,19 +160,21 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	/**
 	 * Decode a utf-8 hex encoded string.
 	 * 
-	 * @param s
-	 * 
-	 * @return
-	 * 
-	 * @throws UnsupportedEncodingException
-	 * 
 	 * @see https://en.wikipedia.org/wiki/UTF-8
+	 * 
+	 * @param str
+	 *   The string to decode.
+	 * @param breakAtNull
+	 *   Should the decoding end when encountering the null character?
+	 * @return
+	 *   The decoded string. 
+	 * @throws UnsupportedEncodingException
 	 */
-	private String utf8decode(String s, boolean breakAtNull) throws UnsupportedEncodingException {
+	private String utf8decode(String str, boolean breakAtNull) throws UnsupportedEncodingException {
 		ByteArrayOutputStream bOutput = new ByteArrayOutputStream(12);
 
-		for (int i = 0; i < s.length(); i += 2) {
-			int b = Integer.parseInt(s.substring(i, i + 2), 16);
+		for (int i = 0; i < str.length(); i += 2) {
+			int b = Integer.parseInt(str.substring(i, i + 2), 16);
 
 			// Break at first null character.
 			if (breakAtNull && b == 0) {
@@ -181,12 +190,14 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	/**
 	 * Decode a utf-8 hex encoded string and break at first null character.
 	 *
-	 * @param s
+	 * @param str
+	 *   The string to decode.
 	 * @return
+	 *   The decoded string.
 	 * @throws UnsupportedEncodingException
 	 */
-	private String utf8decode(String s) throws UnsupportedEncodingException {
-		return utf8decode(s, true);
+	private String utf8decode(String str) throws UnsupportedEncodingException {
+		return utf8decode(str, true);
 	}
 
 	/**
@@ -195,6 +206,7 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	 * @see http://introcs.cs.princeton.edu/java/61data/CRC16CCITT.java
 	 * 
 	 * @param data
+	 *   Byte array of data.
 	 * @return
 	 *   The crc value.
 	 */
@@ -235,23 +247,39 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 	}
 
 	/**
-	 * Check if owner institution matches ISIL.
+	 * Check if owner institution is valid.
 	 *
-	 * @param data
+	 * @param ownerInstitution
+	 *   The owner institution string to validate.
 	 * @return
+	 *   Validity of value.
 	 */
 	private boolean checkOwnerInstitution(String ownerInstitution) {
 		return ownerInstitution.matches("^[A-Z]{2}[0-9]{5}$");
 	}
 
 	/**
-	 * Read each tag.
-	 * 
-	 * Make sure it complies with library standards.
-	 * 
-	 * @TODO: Fix this to correctly follow ISO 28560-1, ISO 28560-3.
-	 * 
+	 * Process each tag.
+	 *
+	 * Makes sure it complies with library standards.
+	 *
+	 * See ISO 28560-3:2014 "Example 1, encoding of truncated basic block"
+	 *
+	 * Tag layout (32 bytes)
+	 * ---------------------
+	 * 4 bits: Content parameter (should be 1)
+	 * 4 bits: Type of usage (should be 1)
+	 * 2 bytes: Set information: x of y
+	 * 16 bytes: Primary item identifier
+	 * 2 bytes: CRC
+	 * 11 bytes: Owner institution
+	 * ---------------------
+	 *
+	 * @TODO: Fix this to completely follow ISO 28560-1, ISO 28560-3.
+	 * @TODO: Handle tags where primary item identifier is saved in the library extension block.
+	 *
 	 * @param tags
+	 *   HashMap of tags.
 	 */
 	private void processTags(HashMap<String, BibTag> tags) {
 		Iterator<Map.Entry<String, BibTag>> iterator = tags.entrySet().iterator();
@@ -277,7 +305,8 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				data = reverseData(data);
 			}
 
-			// We only accept tags that start with 11 and has a data length of 64.
+			// We only accept tags that start with "11" (see Tag layout)
+			// and have a data length of 64.
 			if (!data.substring(0, 2).equals("11") || data.length() != 64) {
 				// Then we do not recognize the tag.
 				logger.warning("Tag does start with 11 or length of 64: " + data);
@@ -291,19 +320,22 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				// Then we do not recognize the tag.
 				logger.warning("Could not validate tag: " + data);
 
-				// This is a hack to handle tags that do not follow standards and do not have valid CRC's.
+				// This is a HACK to handle tags that do not follow standards and do not have valid CRC's.
 				// If it follows standards and does not have a valid CRC, ignore the tag.
 				try {
 					ownerInstitution = utf8decode(data.substring(42, 64), false);
 					if (checkOwnerInstitution(ownerInstitution)) {
+						// If the owner institution is valid and the CRC is invalid, the tag should be ignored.
 						iterator.remove();
 						continue;
 					}
 					else {
+						// In this case we accept the tag even though the CRC is invalid, to allow accepting
+						// tags that do not follow conventions.
 						logger.warning(
-							"Owner institution does not follow convensions: " +
+							"Owner institution does not follow conventions: " +
 							ownerInstitution +
-							". Ignoring validation of tag."
+							". Accepting tag even though validation fails."
 						);
 					}
 				} catch (UnsupportedEncodingException e) {
