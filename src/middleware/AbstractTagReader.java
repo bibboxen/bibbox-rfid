@@ -290,13 +290,6 @@ public abstract class AbstractTagReader extends Thread implements TagReaderInter
 				continue;
 			}
 
-			// Get owner institution.
-			/*
-			try {
-				logger.info("Owner institution: " + utf8decode(data.substring(42, 64), false));
-			} catch (UnsupportedEncodingException e1) {}
-			*/
-
 			// Validate tag.
 			if (!crc(data.substring(38, 42).toLowerCase(), data)) {
 				// Then we do not recognize the tag.
